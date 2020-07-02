@@ -129,7 +129,7 @@ static const struct SpriteFrameImage sSpriteImageTable_85104B4[] =
     obj_frame_tiles(sResetRtcScreen_RightArrowGfx)
 };
 
-static const struct SpritePalette sSpritePalette_Arrow =
+const struct SpritePalette sSpritePalette_Arrow =
 {
     sResetRtcScreen_ArrowPal, 0x1000
 };
@@ -159,7 +159,7 @@ static const union AnimCmd *const sSpriteAnimTable_85104E4[] =
     sSpriteAnim_85104DC,
 };
 
-static const struct SpriteTemplate sSpriteTemplate_85104F0 =
+const struct SpriteTemplate sSpriteTemplate_85104F0 =
 {
     .tileTag = 0xFFFF,
     .paletteTag = 0x1000,

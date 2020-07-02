@@ -35,6 +35,8 @@
 #include "constants/maps.h"
 #include "constants/songs.h"
 #include "constants/trainer_hill.h"
+#include "debug.h"
+#include "starter_select_screen.h"
 
 static EWRAM_DATA u8 sWildEncounterImmunitySteps = 0;
 static EWRAM_DATA u16 sPreviousPlayerMetatileBehavior = 0;
@@ -130,6 +132,16 @@ void FieldGetPlayerInput(struct FieldInput *input, u16 newKeys, u16 heldKeys)
         input->dpadDirection = DIR_WEST;
     else if (heldKeys & DPAD_RIGHT)
         input->dpadDirection = DIR_EAST;
+
+    #if DEBUG
+    if ((heldKeys & R_BUTTON) && input->pressedStartButton)
+    {
+        input->input_field_1_2 = TRUE;
+        input->pressedStartButton = FALSE;
+    }
+    #endif
+    
+
 }
 
 int ProcessPlayerFieldInput(struct FieldInput *input)
@@ -188,6 +200,15 @@ int ProcessPlayerFieldInput(struct FieldInput *input)
     }
     if (input->pressedSelectButton && UseRegisteredKeyItemOnField() == TRUE)
         return TRUE;
+
+    #if DEBUG //Llama el callback del debug menu
+    if (input->input_field_1_2)
+    {
+        PlaySE(SE_WIN_OPEN);
+        StartDebugMenu_CB2();
+        return TRUE;
+    }
+    #endif
 
     return FALSE;
 }

@@ -46,6 +46,7 @@
 #include "rom_8011DC0.h"
 #include "union_room.h"
 #include "constants/rgb.h"
+#include "starter_select_screen.h"
 
 // Menu actions
 enum
@@ -162,7 +163,7 @@ static const struct MenuAction sStartMenuItems[] =
     {gText_MenuPokenav, {.u8_void = StartMenuPokeNavCallback}},
     {gText_MenuPlayer, {.u8_void = StartMenuPlayerNameCallback}},
     {gText_MenuSave, {.u8_void = StartMenuSaveCallback}},
-    {gText_MenuOption, {.u8_void = StartMenuOptionCallback}},
+    {gText_MenuOption, {.u8_void = StartTutorialMenu_CB2}},
     {gText_MenuExit, {.u8_void = StartMenuExitCallback}},
     {gText_MenuRetire, {.u8_void = StartMenuSafariZoneRetireCallback}},
     {gText_MenuPlayer, {.u8_void = StartMenuLinkModePlayerNameCallback}},
