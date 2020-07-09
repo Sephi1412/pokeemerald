@@ -528,10 +528,6 @@ static const struct WindowTemplate sWindowTemplate_MiPlantilla[] =
 
 
 
-
-
-
-
 static const struct BgTemplate sBgTemplateTutorial[3] =
 {
 	{
@@ -572,9 +568,9 @@ static const struct BgTemplate sBgTemplateTutorial[3] =
 
 bool8 StartTutorialMenu_CB2();
 void StarterSelectScreen_CB2(MainCallback returnCallback);
-void CB2_InitTutorialMenu();
-static void CB2_Tutorial();
-static void LoadTutorialBgs();
+void CB2_StarterMenuSelectScreen();
+static void Update_CB2();
+static void LoadStarterMenuBGs();
 bool8 StartOption_CB2();
 
 
@@ -612,30 +608,44 @@ static void MainState_BeginFadeIn(u8 taskId);
 
 static u16 CreateFrontSprite(u16 species, u8 x, u8 y)
 {
+	/*
+		LE ENTREGAS LA "ESPECIE" DE POKéMON PARA DIBUJAR SU SPRITE FRONTAL
+		EN LAS COORDENADAS X, Y
+	*/
     u16 spriteId;
 	struct Sprite *sprite;
     spriteId = CreatePicSprite2(species, 8, 0, 1, x, y, 0xE, 0xFFFF);
 	sprite = &gSprites[spriteId];
-	//HandleLoadSpecialPokePic_2(&gMonFrontPicTable[sStarterMon[sScreen->indexPos]], gMonSpritesGfxPtr->sprites[1], sStarterMon[sScreen->indexPos], 0);
     gSprites[spriteId].oam.priority = 2;
 	BattleAnimateFrontSprite(sprite, sStarterMon[sScreen->indexPos], FALSE, 1);
 
     return spriteId;
 }
 
-static void scrollBg(u8 bg, s32 value, u8 op) 
+static void scrollBgX(u8 bg, s32 value, u8 op) 
 {
-	ChangeBgX(bg, value, op); // El segundo parametro modifica la "Velocidad"
+	/*
+		DESPLAZA EL bg Y LO DESPLAZA EN EL EJE X A UNA VELOCIDAD op
+	*/
+	ChangeBgX(bg, value, op);
 }
 
 static void scrollBgY(u8 bg, s32 value, u8 op)
 {
+	/*
+		DESPLAZA EL bg Y LO DESPLAZA EN EL EJE Y A UNA VELOCIDAD op
+	*/
 	ChangeBgY(bg, value, op);
 }
 
 
-static void LoadTutorialBgs()
+static void LoadStarterMenuBGs()
 {
+	/*
+	A diferencia de de naming screen, aquí no usamos DmaClear ni SetGpuReg
+	Tampoco usa ResetBgsAndClearDma3BusyFlags
+	DMA := Direct Access Memory. Se utiliza para transferir data de manera rápida
+	*/
 	InitBgsFromTemplates(0, sBgTemplateTutorial, ARRAY_COUNT(sBgTemplateTutorial));
 	LZ77UnCompVram(sBg3_Tiles, (void *) VRAM + 0x4000 * 3);
 	LZ77UnCompVram(sBg3_Map, (u16*) BG_SCREEN_ADDR(26));
@@ -654,36 +664,29 @@ static void LoadTutorialBgs()
 	
 }
 
-static void VBlank_CB_Tutorial()
+static void VBlankCB_StarterSelectScreen()
 {
+	/*
+		Aquí también deberíamos encargarnos de setear
+		los registos de la GPU
+	*/
 	LoadOam();
 	scrollBgY(3, 69, 2);	
-	scrollBg(3, 69, 2);
+	scrollBgX(3, 69, 2);
     ProcessSpriteCopyRequests();
     TransferPlttBuffer();
 }
 
-//static void loadAllSheetsAndPalettes()
-//{
-//	LoadSpriteSheet(&spriteSheetGrass);
-//	LoadSpritePalette(&spritePaletteGrass);
-//	LoadSpriteSheet(&spriteSheetPoison);
-//	LoadSpritePalette(&spritePalettePoison);
-//	LoadSpriteSheet(&spriteSheetFire);
-//	LoadSpritePalette(&spritePaletteFire);
-//	LoadSpriteSheet(&spriteSheetWater);
-//	LoadSpritePalette(&spritePaletteWater);
-//	LoadSpriteSheet(&spriteSheetNormal);
-//	LoadSpritePalette(&spritePaletteNormal);
-//	LoadSpriteSheet(&spriteSheetElectric);
-//	LoadSpritePalette(&spritePaletteElectric);
-//	LoadSpriteSheet(&spriteSheetFight);
-//	LoadSpritePalette(&spritePaletteFight);
-//
-//}
 
 static void printMonType(u16 indexPos)
 {
+	/*
+		Esta función se encarga de encarga de retornar
+		el/los sprites asociados al typing de cada pokémon.
+		Esta función recibe solo como parametro el indice
+		en el que estamos actualmente en el menu (hard-coding) 
+
+	*/
 	switch(indexPos){
 		case 0:
 			LoadSpriteSheet(&spriteSheetGrass);
@@ -749,7 +752,7 @@ static void printMonType(u16 indexPos)
 }
 
 
-static void CB2_Tutorial()
+static void Update_CB2()
 {
 	RunTasks();
     AnimateSprites();
@@ -764,7 +767,7 @@ bool8 StartTutorialMenu_CB2()
 		gMain.state = 0;
 		//RemoveExtraStartMenuWindows();
 		CleanupOverworldWindowsAndTilemaps();
-		SetMainCallback2(CB2_InitTutorialMenu);
+		SetMainCallback2(CB2_StarterMenuSelectScreen);
 
 		return;
 	}
@@ -775,13 +778,18 @@ bool8 StartTutorialMenu_CB2()
 
 void StarterSelectScreen_CB2(MainCallback returnCallback)
 {
+	/* 
+		Función utilizada en main_menu.c. Esta recibe la función que se debe
+		utilizar una vez termina el proceso y se encarga de iniciar la
+		generación del menú.
+	*/
 	sScreen->returnCallback = returnCallback;
 	if(!gPaletteFade.active)
 	{
 		gMain.state = 0;
 		//RemoveExtraStartMenuWindows();
 		CleanupOverworldWindowsAndTilemaps();
-		SetMainCallback2(CB2_InitTutorialMenu);
+		SetMainCallback2(C2_StarterSelectScreen);
 
 		return;
 	}
@@ -806,8 +814,14 @@ bool8 StartOption_CB2()
 
 
 
-void CB2_InitTutorialMenu()
+void CB2_StarterMenuSelectScreen()
 {
+	/*
+		Esta función se encarga de iniciar el menú de los iniciales,
+		mas no de la gestión del mismo. Solo prepara el entorno. Lo
+		importante de aquí es el CreateTask. Desde ahí se deriva todo
+
+	*/
 	switch (gMain.state)
 	{
 
@@ -834,15 +848,18 @@ void CB2_InitTutorialMenu()
 
 		default:
 			BeginNormalPaletteFade(0xFFFFFFFF, 0, 16, 0, RGB_BLACK);
-			SetVBlankCallback(VBlank_CB_Tutorial);
+			SetVBlankCallback(VBlankCB_StarterSelectScreen);
 			//CreateTask(FadeOut);
-			SetMainCallback2(CB2_Tutorial);
+			SetMainCallback2(Update_CB2);
 			break;
 	}
 }
 
 void C2_StarterSelectScreen(void)
 {
+	/*
+		Variante de la función anterior (test purposes only)
+	*/
 	switch (gMain.state)
     {
     	case 0:
@@ -878,13 +895,19 @@ void C2_StarterSelectScreen(void)
 			break;
 		case 5:
 			UpdatePaletteFade();
-			LoadTutorialBgs();
+			LoadStarterMenuBGs();
 			gMain.state++;
 			break;
 		default:
 			//CrearTask e Iniciar Callback
-			CreateTask(Task_InitBasicStructures, 0);
+			
 			SetUpFunc();
+			//BeginNormalPaletteFade(0xFFFFFFFF, 0, 16, 0, RGB_BLACK);
+			SetVBlankCallback(VBlankCB_StarterSelectScreen);
+			SetMainCallback2(Update_CB2);
+			CreateTask(Task_InitBasicStructures, 0);
+			//CreateTask(FadeOut);
+			
 			break;
 
 	}
@@ -897,7 +920,7 @@ const u8 sFontColourTableTypeBlack[] = {0, 2, 3, 0};
 static void SetUpFunc()
 {
 	CreateTask(MainState_BeginFadeIn, 2);
-	SetMainCallback2(CB2_Tutorial);
+	SetMainCallback2(Update_CB2);
 }
 
 
@@ -924,7 +947,7 @@ static void MainState_BeginFadeIn(u8 taskId)
 
 			break;
 		case 4:
-			MainState_StarterWaitFadeOutAndExit(sScreen->returnCallback);
+			//MainState_StarterWaitFadeOutAndExit(sScreen->returnCallback);
 			break;
 			
 		//case 4:
@@ -944,7 +967,7 @@ static void Task_InitBasicStructures(u8 taskId)
 	sScreen->mainState = 0;
 	sScreen -> indexPos = 0;
 	
-	LoadTutorialBgs();	
+	LoadStarterMenuBGs();	
 	InitMyTextWindows();
 	InitConstTexts();
 	
@@ -1121,7 +1144,7 @@ static void Task_Confirm(u8 taskId)
 			//MainState_StarterWaitFadeOutAndExit(sScreen->returnCallback);
 			
 			sScreen->mainState++;
-			//GoBackToBirchScene(sScreen->pkmnNumberSpecies, taskId);
+			GoBackToBirchScene(sScreen->pkmnNumberSpecies, taskId);
     		break;
 
     	case 1:  // NO

@@ -251,8 +251,8 @@ static void C2_NamingScreen(void)
     switch (gMain.state)
     {
     case 0:
-        NamingScreen_TurnOffScreen();
-        NamingScreen_Init();
+        NamingScreen_TurnOffScreen(); // Pantalla se va a negro
+        NamingScreen_Init(); // Inicia los valores de la estructura que corresponde a la pantalla
         gMain.state++;
         break;
     case 1:
@@ -281,14 +281,14 @@ static void C2_NamingScreen(void)
         gMain.state++;
         break;
     case 7:
-        sub_80E3CC8();
+        sub_80E3CC8(); //Init_Target
         UpdatePaletteFade();
-        sub_80E501C();
+        sub_80E501C(); //Show All Backgrounds
         gMain.state++;
         break;
     default:
         sub_80E4CB8();
-        sub_80E3194();
+        sub_80E3194(); //El resto de las operaciones (input management)
         break;
     }
 }
@@ -2331,5 +2331,3 @@ static const struct SpritePalette gUnknown_0858C230[] =
     {gNamingScreenMenu_Pal + 0x40,  0x0007},
     {NULL}
 };
-
-
