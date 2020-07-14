@@ -27,6 +27,7 @@
 #include "pokedex.h"
 #include "string.h"
 #include "util.h"
+#include "graphics.h"
 #include "trainer_pokemon_sprites.h"
 #include "string_util.h"
 #include "constants/battle_frontier.h"
@@ -84,6 +85,28 @@ struct SelectScreen
 	u16 actualSpriteId;
 	u16 pkmnNumberSpecies;
 	MainCallback returnCallback;
+
+
+    u8 tilemapBuffer1[0x800];
+    u8 tilemapBuffer2[0x800];
+    u8 tilemapBuffer3[0x800];
+    u8 textBuffer[0x10];
+    u8 tileBuffer[0x600];
+    u8 state;
+    u8 windows[5];
+    u16 inputCharBaseXPos;
+    u16 bg1vOffset;
+    u16 bg2vOffset;
+    u16 bg1Priority;
+    u16 bg2Priority;
+    u8 bgToReveal;
+    u8 bgToHide;
+    u8 currentPage;
+    u8 cursorSpriteId;
+    u8 selectBtnFrameSpriteId;
+    u8 keyRepeatStartDelayCopy;
+    u8 templateNum;
+    u8 *destBuffer;
 	
 };
 
@@ -466,7 +489,7 @@ static const struct WindowTemplate sWindowTemplate_YesNo[] =
 
 enum { NAME_PKMN, DEX_NUM, ABILITY_NAME, ITEM_NAME, SCREEN_TITLE, ARE_YOU_SURE_TEXTBOX};
 
-static const struct WindowTemplate sWindowTemplate_MiPlantilla[] = 
+static const struct WindowTemplate sWindowTemplate_AllStringsInScreen[] = 
 {
 	[NAME_PKMN] = {
 		.bg = 0,
@@ -601,7 +624,8 @@ void InitMyTextWindows();
 void AddText(const u8* text);
 void CreateTextBox(u8 windowId, u8 font, const u8* colourTable, u8 left, u8 top);
 void CreateTextBoxType(u8 windowId, u8 font, const u8* colourTable, u8 top, u8 left);
-static void MainState_BeginFadeIn(u8 taskId);
+static void StarterSelectScreen_LogicManager(u8 taskId);
+static void VBlankCB_StarterSelectScreen(void);
 
 
 
@@ -663,6 +687,29 @@ static void LoadStarterMenuBGs()
 	ShowBg(3);
 	
 }
+
+
+static void StarterSelectScreen_InitBGs(void)
+{
+	u8 i;
+    DmaClearLarge16(3, (void *)VRAM, VRAM_SIZE, 0x1000);
+    DmaClear32(3, (void *)OAM, OAM_SIZE);
+    DmaClear16(3, (void *)PLTT, PLTT_SIZE);
+
+	SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_MODE_0);
+    ResetBgsAndClearDma3BusyFlags(0);
+    InitBgsFromTemplates(0, sBgTemplateTutorial, ARRAY_COUNT(sBgTemplateTutorial));
+
+	InitMyTextWindows();
+	sub_8197200();
+
+	SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_OBJ_1D_MAP | DISPCNT_OBJ_ON);
+    SetGpuReg(REG_OFFSET_BLDCNT, BLDCNT_EFFECT_BLEND | BLDCNT_TGT2_BG1 | BLDCNT_TGT2_BG2);
+    SetGpuReg(REG_OFFSET_BLDALPHA, BLDALPHA_BLEND(0xC, 0x8));
+
+}
+
+
 
 static void VBlankCB_StarterSelectScreen()
 {
@@ -749,6 +796,13 @@ static void printMonType(u16 indexPos)
 			iconNameEWRAM = CreateSprite(&spriteTemplateDark, COORD_TYPE1_ICON_X, COORD_TYPE_ICON_Y, 0);
 			break;
 	}
+}
+
+
+static void StarterSelectScreen_TurnOffScreen(void)
+{
+	SetVBlankCallback(NULL); 
+    SetHBlankCallback(NULL);
 }
 
 
@@ -855,6 +909,19 @@ void CB2_StarterMenuSelectScreen()
 	}
 }
 
+
+static void StarterSelectScreen_Init(void)
+{
+    sScreen->mainState = 0;
+    sScreen->bg1vOffset = 0;
+    sScreen->bg2vOffset = 0;
+    sScreen->bg1Priority = BGCNT_PRIORITY(1);
+    sScreen->bg2Priority = BGCNT_PRIORITY(2);
+    sScreen->bgToReveal = 0;
+    sScreen->bgToHide = 1;
+}
+
+
 void C2_StarterSelectScreen(void)
 {
 	/*
@@ -863,21 +930,12 @@ void C2_StarterSelectScreen(void)
 	switch (gMain.state)
     {
     	case 0:
-			SetVBlankCallback(NULL);
-    		SetHBlankCallback(NULL);
-			sScreen->mainState = 0;
+			StarterSelectScreen_TurnOffScreen();
+			//StarterSelectScreen_Init();
 			gMain.state++;
 			break;
 		case 1:
-			DmaClear32(3, (void *)OAM, OAM_SIZE);
-    		DmaClear16(3, (void *)PLTT, PLTT_SIZE);
-			DmaClearLarge16(3, (void *)VRAM, VRAM_SIZE, 0x1000);
-			SetVBlankHBlankCallbacksToNull();
-			ScanlineEffect_Stop();
-			ResetTasks();
-			ResetSpriteData();
-			ResetPaletteFade();
-			FreeAllSpritePalettes();
+			StarterSelectScreen_InitBGs();
 			gMain.state++;
 			break;
 		case 2:
@@ -899,12 +957,10 @@ void C2_StarterSelectScreen(void)
 			gMain.state++;
 			break;
 		default:
-			//CrearTask e Iniciar Callback
-			
+			//CrearTask e Iniciar Callback		
 			SetUpFunc();
 			//BeginNormalPaletteFade(0xFFFFFFFF, 0, 16, 0, RGB_BLACK);
 			SetVBlankCallback(VBlankCB_StarterSelectScreen);
-			SetMainCallback2(Update_CB2);
 			CreateTask(Task_InitBasicStructures, 0);
 			//CreateTask(FadeOut);
 			
@@ -919,21 +975,56 @@ const u8 sFontColourTableTypeBlack[] = {0, 2, 3, 0};
 
 static void SetUpFunc()
 {
-	CreateTask(MainState_BeginFadeIn, 2);
+	CreateTask(StarterSelectScreen_LogicManager, 2);
 	SetMainCallback2(Update_CB2);
 }
 
 
-static void MainState_BeginFadeIn(u8 taskId)
+static bool8 StarterSelectScreen_BeginFadeIn(void)
+{
+	CopyToBgTilemapBuffer(3, gUnknown_08DD4544, 0, 0);
+	CopyToBgTilemapBuffer(3, gUnknown_08DD4544, 0, 0);
+	CopyToBgTilemapBuffer(3, gUnknown_08DD4544, 0, 0);
+	CopyBgTilemapBufferToVram(1);
+    CopyBgTilemapBufferToVram(2);
+    CopyBgTilemapBufferToVram(3);
+    BlendPalettes(-1, 16, 0);
+    BeginNormalPaletteFade(0xFFFFFFFF, 0, 16, 0, RGB_BLACK);
+    sScreen->state++;
+    return FALSE;
+}
+
+static void VBlankCB_StarterSelectScreen2(void)
+{
+    LoadOam();
+    ProcessSpriteCopyRequests();
+    TransferPlttBuffer();
+    SetGpuReg(REG_OFFSET_BG1VOFS, sScreen->bg1vOffset);
+    SetGpuReg(REG_OFFSET_BG2VOFS, sScreen->bg2vOffset);
+    SetGpuReg(REG_OFFSET_BG1CNT, GetGpuReg(REG_OFFSET_BG1CNT) & 0xFFFC);
+    SetGpuRegBits(REG_OFFSET_BG1CNT, sScreen->bg1Priority);
+    SetGpuReg(REG_OFFSET_BG2CNT, GetGpuReg(REG_OFFSET_BG2CNT) & 0xFFFC);
+    SetGpuRegBits(REG_OFFSET_BG2CNT, sScreen->bg2Priority);
+	scrollBgY(3, 69, 2);	
+	scrollBgX(3, 69, 2);
+}
+
+static void StarterSelectScreen_InitDisplayMode(void)
+{
+    SetVBlankCallback(VBlankCB_StarterSelectScreen);
+}
+
+static void StarterSelectScreen_LogicManager(u8 taskId)
 {
 	switch (sScreen->mainState)
 	{
 		case 0:
-			BeginNormalPaletteFade(0xFFFFFFFF, 0, 16, 0, RGB_BLACK);
-    		sScreen->mainState++;
+			StarterSelectScreen_BeginFadeIn();
+			//StarterSelectScreen_InitDisplayMode();
+    		//sScreen->mainState++;
 			break;
 		case 1:
-			//InitTextWindowBoxes
+			//WaitFadeIn
 			if (!gPaletteFade.active)
 				sScreen->mainState++;
 			break;
@@ -1213,7 +1304,7 @@ static void InitMon()
 
 void InitMyTextWindows()
 {
-	InitWindows(sWindowTemplate_MiPlantilla);	//Inicializa los window
+	InitWindows(sWindowTemplate_AllStringsInScreen);	//Inicializa los window
 	DeactivateAllTextPrinters(); 	//Desactiva cualquier posible Text printer que haya quedado abierto
 	LoadPalette(GetOverworldTextboxPalettePtr(), 0xf0, 0x20);	//Carga la paleta del texto por defecto del juego en el slot 15 de las paletas para backgrounds
 	//LoadUserWindowBorderGfx(YES_NO_WINDOW, 211, 0xe0); //Opcional, necesario si se van a usar ventanas Yes/no

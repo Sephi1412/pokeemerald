@@ -288,7 +288,7 @@ static void C2_NamingScreen(void)
         break;
     default:
         sub_80E4CB8();
-        sub_80E3194(); //El resto de las operaciones (input management)
+        sub_80E3194(); //SetUpFunc 
         break;
     }
 }
