@@ -1764,7 +1764,7 @@ static void Task_NewGameBirchSpeech_AreYouReady(u8 taskId)
         NewGameBirchSpeech_StartFadePlatformOut(taskId, 1);
         StringExpandPlaceholders(gStringVar4, gText_Birch_AreYouReady);
         AddTextPrinterForMessage(1);
-        gTasks[taskId].func = Task_NewGame_WaitStarterMenu;
+        gTasks[taskId].func = Task_NewGameBirchSpeech_ShrinkPlayer;
         
     }
 }
@@ -1973,13 +1973,55 @@ void CB2_NewGame_BackBirch(u8 taskId)
 }
 
 
+
+static void VBlankCB_Field_T(void)
+{
+
+    LoadOam();
+    ProcessSpriteCopyRequests();
+    ScanlineEffect_InitHBlankDmaTransfer();
+    TransferPlttBuffer();
+
+}
+
+
+static void SetFieldVBlankCallback_T(void)
+{
+    SetVBlankCallback(VBlankCB_Field_T);
+}
+
+
+void InitTextWindowsFromTemplates_T()
+{
+	InitWindows(sWindowTemplates_MainMenu);	//Inicializa las ventanas de texto
+	DeactivateAllTextPrinters(); 	//Desactiva cualquier posible Text printer que haya quedado abierto
+	LoadPalette(GetOverworldTextboxPalettePtr(), 0xf0, 0x20);	//Carga la paleta del texto por defecto del juego en el slot 15 de las paletas para backgrounds
+	//LoadUserWindowBorderGfx(YES_NO_WINDOW, 211, 0xe0); //Opcional, necesario si se van a usar ventanas Yes/no
+}
+
 void GoBackToBirchScene(u16 varValue, u8 taskId)
 {
 	pkmnIndex = varValue;
 	MainState_StarterBeginFadeInOut();
-    taskId = CreateTask(CB2_NewGame_BackBirch, 0);
-    //SetMainCallback2(CB2_NewGame_BackBirch);
-}
+    //ShowBg(0);
+    //BeginNormalPaletteFade(0xFFFFFFFF, 1, 0, 16, RGB_BLACK);
+    //taskId = CreateTask(CB2_InitMainMenu, 0);
+    BeginNormalPaletteFade(0xFFFFFFFF, 0, 0, 0x10, RGB_BLACK);
+    SetFieldVBlankCallback_T();
+    //DmaFill16(3, 0, (void *)VRAM, VRAM_SIZE);
+    //DmaFill32(3, 0, (void *)OAM, OAM_SIZE);
+    //DmaFill16(3, 0, (void *)(PLTT + 2), PLTT_SIZE - 2);
+    //InitMainMenu(TRUE);
+    
+    SetVBlankCallback(NULL);
+    SetHBlankCallback(NULL);
+    InitTextWindowsFromTemplates_T();
+    SetMainCallback2(CB2_NewGameBirchSpeech_ReturnFromNamingScreen);
+    InitTextWindowsFromTemplates_T();
+
+    
+    //ShowBg(0);
+    }
 
 
 
