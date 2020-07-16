@@ -18,6 +18,8 @@
 #include "text_window.h"
 #include "international_string_util.h"
 #include "overworld.h"
+#include "constants/songs.h"
+#include "sound.h"
 #include "strings.h"
 #include "list_menu.h"
 #include "malloc.h"
@@ -60,9 +62,9 @@ struct  BattleDebugMenu
     u8 secondaryListWindowId;
     u8 secondaryListTaskId;
     u8 currentSecondaryListItemId;
-    u8 secondaryListItemCount;
 
-    u8 modifyWindowId;
+    u8 actualPos;
+    u8 rowIndex;
 
     u8 activeWindow;
 
@@ -327,7 +329,7 @@ static void ValueToCharDigits(u8 *charDigits, u32 newValue, u8 maxDigits);
 static void SetUpModifyArrows(struct BattleDebugMenu *data);
 static bool32 TryMoveDigit(struct BattleDebugModifyArrows *modArrows, bool32 moveUp);
 static void UpdateValue(struct BattleDebugMenu *data);
-
+static void Task_HandleMainInputs(u8 taskId);
 
 /*
 
@@ -437,7 +439,7 @@ void CallBack2_BattleMusicMenu(void)
 
 
         data->mainListWindowId = AddWindow(&sMainListWindowTemplate);
-
+        data->actualPos = 1;
         gMultiuseListMenuTemplate = sMainListTemplate;
         gMultiuseListMenuTemplate.windowId = data->mainListWindowId;
         data->mainListTaskId = ListMenuInit(&gMultiuseListMenuTemplate, 0, 0);
@@ -446,7 +448,7 @@ void CallBack2_BattleMusicMenu(void)
         data->activeWindow = ACTIVE_WIN_MAIN;
 
         CreateSecondaryListMenu(data);
-        PrintSecondaryEntries(data, 1, 2);
+        PrintSecondaryEntries(data, data->actualPos, 2);
 
         
         data->secondaryListTaskId = 0xFF;
@@ -494,80 +496,46 @@ static void Task_DebugMenuProcessInput(u8 taskId)
             // Create the secondary menu list.
             CreateSecondaryListMenu(data);
             PrintSecondaryEntries(data, 1, 2);
-            data->activeWindow = ACTIVE_WIN_SECONDARY;
-        }
-    }
-    // Secondary list is active, handle input.
-    else if (data->activeWindow == ACTIVE_WIN_SECONDARY)
-    {
-        listItemId = ListMenu_ProcessInput(data->secondaryListTaskId);
-        if (listItemId == LIST_CANCEL)
-        {
-            DestroyListMenuTask(data->secondaryListTaskId, NULL, NULL);
-            ClearStdWindowAndFrameToTransparent(data->secondaryListWindowId, TRUE);
-            RemoveWindow(data->secondaryListWindowId);
-            data->activeWindow = ACTIVE_WIN_MAIN;
-            data->secondaryListTaskId = 0xFF;
-        }
-        else if (listItemId != LIST_NOTHING_CHOSEN)
-        {
-            data->currentSecondaryListItemId = listItemId;
-            data->modifyWindowId = AddWindow(&sModifyWindowTemplate);
-            PutWindowTilemap(data->modifyWindowId);
-            CopyWindowToVram(data->modifyWindowId, 3);
-            SetUpModifyArrows(data);
-            PrintDigitChars(data);
-            data->activeWindow = ACTIVE_WIN_MODIFY;
-        }
-    }
-    // Handle value modifying.
-    else if (data->activeWindow == ACTIVE_WIN_MODIFY)
-    {
-        if (gMain.newKeys & (B_BUTTON | A_BUTTON))
-        {
-            ClearStdWindowAndFrameToTransparent(data->modifyWindowId, TRUE);
-            RemoveWindow(data->modifyWindowId);
-            DestroyModifyArrows(data);
-            data->activeWindow = ACTIVE_WIN_SECONDARY;
-        }
-        else if (gMain.newKeys & DPAD_RIGHT)
-        {
-            if (data->modifyArrows.currentDigit != (data->modifyArrows.maxDigits - 1))
-            {
-                data->modifyArrows.currentDigit++;
-                gSprites[data->modifyArrows.arrowSpriteId[0]].pos2.x += 6;
-                gSprites[data->modifyArrows.arrowSpriteId[1]].pos2.x += 6;
-            }
-        }
-        else if (gMain.newKeys & DPAD_LEFT)
-        {
-            if (data->modifyArrows.currentDigit != 0)
-            {
-                data->modifyArrows.currentDigit--;
-                gSprites[data->modifyArrows.arrowSpriteId[0]].pos2.x -= 6;
-                gSprites[data->modifyArrows.arrowSpriteId[1]].pos2.x -= 6;
-            }
-        }
-        else if (gMain.newKeys & DPAD_UP) // OJO
-        {
-            if (TryMoveDigit(&data->modifyArrows, TRUE))
-            {
-                PrintDigitChars(data);
-                UpdateValue(data);
-                PrintSecondaryEntries(data, 1, 2);
-            }
-        }
-        else if (gMain.newKeys & DPAD_DOWN)
-        {
-            if (TryMoveDigit(&data->modifyArrows, FALSE))
-            {
-                PrintDigitChars(data);
-                UpdateValue(data);
-                PrintSecondaryEntries(data, 1, 2);
-            }
+            //data->activeWindow = ACTIVE_WIN_SECONDARY;
+            gTasks[taskId].func = Task_HandleMainInputs;
         }
     }
 }
+
+
+static void Task_HandleMainInputs(u8 taskId)
+{
+    struct BattleDebugMenu *data = GetStructPtr(taskId);
+    if (gMain.newKeys & A_BUTTON)
+	{	
+        //ClearWindowTilemap(SCREEN_TITLE);
+		//RemoveWindow(SCREEN_TITLE);
+		//CleanupOverworldWindowsAndTilemaps();
+		PlaySE(SE_SELECT);
+
+	}
+    if (gMain.newKeys & DPAD_RIGHT)
+	{
+		PlaySE(SE_SELECT);
+        data->actualPos += 1;
+
+        ClearWindowTilemap(data->secondaryListWindowId);
+		RemoveWindow(data->secondaryListWindowId);
+        CreateSecondaryListMenu(data);
+        PrintSecondaryEntries(data, data->actualPos, 2);
+    }
+    if (gMain.newKeys & DPAD_LEFT)
+	{
+		PlaySE(SE_SELECT);
+        data->actualPos -= 1;
+
+        ClearWindowTilemap(data->secondaryListWindowId);
+		RemoveWindow(data->secondaryListWindowId);
+        CreateSecondaryListMenu(data);
+        PrintSecondaryEntries(data, data->actualPos, 2);
+    }
+}
+
 
 static void Task_DebugMenuFadeOut(u8 taskId)
 {
@@ -606,7 +574,7 @@ static void CreateSecondaryListMenu(struct BattleDebugMenu *data)
         break;
     }
 
-    data->secondaryListItemCount = itemsCount;
+    
     winTemplate.height *= itemsCount;
     data->secondaryListWindowId = AddWindow(&winTemplate);
 
@@ -619,21 +587,6 @@ static void CreateSecondaryListMenu(struct BattleDebugMenu *data)
     data->secondaryListTaskId = ListMenuInit(&listTemplate, 0, 0);
     CopyWindowToVram(data->secondaryListWindowId, 3);
 }
-
-static void PadString(const u8 *src, u8 *dst)
-{
-    u32 i;
-
-    for (i = 0; i < 17 && src[i] != EOS; i++)
-        dst[i] = src[i];
-
-    for (; i < 17; i++)
-        dst[i] = CHAR_SPACE;
-
-    dst[i] = EOS;
-}
-
-
 
 
 static void PrintSecondaryEntries(struct BattleDebugMenu *data, u8 wildIndex, u8 trainerIndex)
@@ -684,181 +637,18 @@ static void PrintSecondaryEntries(struct BattleDebugMenu *data, u8 wildIndex, u8
     }
 }
 
-static void DestroyModifyArrows(struct BattleDebugMenu *data)
-{
-    FreeSpritePaletteByTag(sSpritePalette_Arrow.tag);
-    if (data->modifyArrows.arrowSpriteId[0] != 0xFF)
-        DestroySprite(&gSprites[data->modifyArrows.arrowSpriteId[0]]);
-    if (data->modifyArrows.arrowSpriteId[1] != 0xFF)
-        DestroySprite(&gSprites[data->modifyArrows.arrowSpriteId[1]]);
-}
-
-static void PrintDigitChars(struct BattleDebugMenu *data)
-{
-    s32 i;
-    u8 text[MAX_MODIFY_DIGITS + 1];
-
-    for (i = 0; i < data->modifyArrows.maxDigits; i++)
-        text[i] = data->modifyArrows.charDigits[i];
-
-    text[i] = EOS;
-
-    AddTextPrinterParameterized(data->modifyWindowId, 1, text, 3, 0, 0, NULL);
-}
-
-static const u32 GetBitfieldToAndValue(u32 currBit, u32 bitsCount)
+static void PadString(const u8 *src, u8 *dst)
 {
     u32 i;
-    u32 toAnd = 0;
 
-    for (i = 0; i < bitsCount; i++)
-        toAnd |= (1 << (currBit + i));
+    for (i = 0; i < 17 && src[i] != EOS; i++)
+        dst[i] = src[i];
 
-    return toAnd;
+    for (; i < 17; i++)
+        dst[i] = CHAR_SPACE;
+
+    dst[i] = EOS;
 }
-
-static const u32 GetBitfieldValue(u32 value, u32 currBit, u32 bitsCount)
-{
-    return (value & (GetBitfieldToAndValue(currBit, bitsCount))) >> currBit;
-}
-
-
-
-static u32 CharDigitsToValue(u8 *charDigits, u8 maxDigits)
-{
-    s32 i;
-    u8 id = 0;
-    u32 newValue = 0;
-    u8 valueDigits[MAX_MODIFY_DIGITS];
-
-    for (i = 0; i < MAX_MODIFY_DIGITS; i++)
-        valueDigits[i] = charDigits[i] - CHAR_0;
-
-    if (maxDigits >= MAX_MODIFY_DIGITS)
-        newValue += valueDigits[id++] * 1000;
-    if (maxDigits >= MAX_MODIFY_DIGITS - 1)
-        newValue += valueDigits[id++] * 100;
-    if (maxDigits >= MAX_MODIFY_DIGITS - 2)
-        newValue += valueDigits[id++] * 10;
-    if (maxDigits >= MAX_MODIFY_DIGITS - 3)
-        newValue += valueDigits[id++];
-
-    return newValue;
-}
-
-static void ValueToCharDigits(u8 *charDigits, u32 newValue, u8 maxDigits)
-{
-    s32 i;
-    u8 valueDigits[MAX_MODIFY_DIGITS];
-    u8 id = 0;
-
-    if (maxDigits >= MAX_MODIFY_DIGITS)
-        valueDigits[id++] = newValue / 1000;
-    if (maxDigits >= MAX_MODIFY_DIGITS - 1)
-        valueDigits[id++] = (newValue % 1000) / 100;
-    if (maxDigits >= MAX_MODIFY_DIGITS - 2)
-        valueDigits[id++] = (newValue % 100) / 10;
-    if (maxDigits >= MAX_MODIFY_DIGITS - 3)
-        valueDigits[id++] = newValue % 10;
-
-    for (i = 0; i < MAX_MODIFY_DIGITS; i++)
-        charDigits[i] = valueDigits[i] + CHAR_0;
-}
-
-
-
-
-
-
-
-static u16 stateFlagToInt(u16 flag){
-    if(FlagGet(flag) == TRUE){
-        return (u16)1;
-    }
-    else{
-        return (u16)0;
-    }
-}
-
-
-
-
-
-static void SetUpModifyArrows(struct BattleDebugMenu *data)
-{
-    u16 value_Var;
-    bool8 value_Flag;
-    LoadSpritePalette(&sSpritePalette_Arrow);
-    data->modifyArrows.arrowSpriteId[0] = CreateSprite(&sSpriteTemplate_85104F0, 207, 12, 0);
-    data->modifyArrows.arrowSpriteId[1] = CreateSprite(&sSpriteTemplate_85104F0, 207, 36, 0);
-    gSprites[data->modifyArrows.arrowSpriteId[1]].animNum = 1;
-    switch (data->currentMainListItemId)
-    {
-    
-    case LIST_ITEM_WILD:
-        value_Var = VarGet(gDebugVar[data->currentSecondaryListItemId].var);
-        data->modifyArrows.minValue = 0;
-        data->modifyArrows.maxValue = 999;
-        data->modifyArrows.maxDigits = 3;
-        data->modifyArrows.modifiedValPtr = &value_Var;
-        data->modifyArrows.typeOfVal = VARs;
-        data->modifyArrows.currValue = value_Var;
-        break;
-    case LIST_ITEM_TRAINER:
-        value_Flag = FlagGet(gDebugFlag[data->currentSecondaryListItemId].flag);
-        data->modifyArrows.minValue = 0;
-        data->modifyArrows.maxValue = 1;
-        data->modifyArrows.maxDigits = 1;
-        data->modifyArrows.modifiedValPtr = &value_Flag;
-        data->modifyArrows.typeOfVal = FLAGs;
-        data->modifyArrows.currValue = value_Flag;
-        break;
-    }
-
-    data->modifyArrows.currentDigit = 0;
-    ValueToCharDigits(data->modifyArrows.charDigits, data->modifyArrows.currValue, data->modifyArrows.maxDigits);
-}
-
-static bool32 TryMoveDigit(struct BattleDebugModifyArrows *modArrows, bool32 moveUp)
-{
-    s32 i;
-    u8 charDigits[MAX_MODIFY_DIGITS];
-    u32 newValue;
-
-    for (i = 0; i < MAX_MODIFY_DIGITS; i++)
-        charDigits[i] = modArrows->charDigits[i];
-
-    if (moveUp)
-    {
-        if (charDigits[modArrows->currentDigit] == CHAR_9)
-            charDigits[modArrows->currentDigit] = CHAR_0;
-        else
-            charDigits[modArrows->currentDigit]++;
-    }
-    else
-    {
-        if (charDigits[modArrows->currentDigit] == CHAR_0)
-            charDigits[modArrows->currentDigit] = CHAR_9;
-        else
-            charDigits[modArrows->currentDigit]--;
-    }
-
-    newValue = CharDigitsToValue(charDigits, modArrows->maxDigits);
-    if (newValue > modArrows->maxValue || newValue < modArrows->minValue)
-    {
-        return FALSE;
-    }
-    else
-    {
-        modArrows->currValue = newValue;
-        for (i = 0; i < MAX_MODIFY_DIGITS; i++)
-             modArrows->charDigits[i] = charDigits[i];
-        return TRUE;
-    }
-}
-
-
-
 
 
 static void UpdateValue(struct BattleDebugMenu *data)
