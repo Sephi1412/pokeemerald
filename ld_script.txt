@@ -334,6 +334,7 @@ SECTIONS {
         src/international_string_util.o(.text);
         src/starter_select_screen.o(.text);
         src/debug.o(.text);
+        src/music_selector.o(.text);
 
     } =0
 
@@ -695,6 +696,7 @@ SECTIONS {
         data/sound_data.o(.rodata);
         src/starter_select_screen.o(.rodata);
         src/debug.o(.rodata);
+        src/music_selector.o(.rodata);
     } =0
 
     song_data :

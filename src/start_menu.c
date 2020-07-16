@@ -47,6 +47,7 @@
 #include "union_room.h"
 #include "constants/rgb.h"
 #include "starter_select_screen.h"
+#include "music_selector.h"
 
 // Menu actions
 enum
@@ -695,7 +696,7 @@ static bool8 StartMenuOptionCallback(void)
         PlayRainStoppingSoundEffect();
         RemoveExtraStartMenuWindows();
         CleanupOverworldWindowsAndTilemaps();
-        SetMainCallback2(CB2_InitOptionMenu); // Display option menu
+        SetMainCallback2(CallBack2_BattleMusicMenu); // Display option menu
         gMain.savedCallback = CB2_ReturnToFieldWithOpenMenu;
 
         return TRUE;
