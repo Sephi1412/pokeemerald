@@ -502,7 +502,7 @@ static void Task_DebugMenuProcessInput(u8 taskId)
             case LIST_ITEM_COUNT:
             case LIST_ITEM_WILD:
                 if(data->wildThemeIndex == 1){
-                    data->wildThemeIndex = 3;
+                    data->wildThemeIndex = SONGS_COUNT;
                     break;
                 }    
                 else{
@@ -510,8 +510,15 @@ static void Task_DebugMenuProcessInput(u8 taskId)
                     break;
                 }
             case LIST_ITEM_TRAINER:
-                data->trainerThemeIndex -= 1;
-                break;
+                if(data->trainerThemeIndex == 1){
+                    data->trainerThemeIndex = SONGS_COUNT;
+                    break;
+                }
+                else
+                {
+                    data->trainerThemeIndex -= 1;
+                    break;
+                }
             }
     }
 
