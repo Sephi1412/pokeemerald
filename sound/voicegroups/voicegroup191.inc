@@ -24,7 +24,7 @@ voicegroup191:: @ 86A8CBC
 	voice_square_1 0, 2, 0, 0, 15, 0  @ 86A8DB8
 	voice_square_1 0, 2, 0, 0, 15, 0  @ 86A8DC4
 	voice_square_1 0, 2, 0, 0, 15, 0  @ 86A8DD0
-	voice_directsound 60, 0, DirectSoundWaveData_sd90_classical_distortion_guitar_high, 128, 249, 25, 127  @ 86A8DDC
+	voice_directsound 60, 0, DirectSoundWaveData_sc88_nylon_str_guitar, 128, 249, 25, 127  @ 86A8DDC
 	voice_directsound 60, 0, DirectSoundWaveData_sc88_nylon_str_guitar, 255, 165, 128, 204  @ 86A8DE8
 	voice_square_1 0, 2, 0, 0, 15, 0  @ 86A8DF4
 	voice_square_1 0, 2, 0, 0, 15, 0  @ 86A8E00
