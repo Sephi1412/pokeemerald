@@ -33,14 +33,9 @@
 #include "constants/rgb.h"
 #include "constants/vars.h"
 
-#define MAX_MODIFY_DIGITS 4
-#define MAX_VAR_COUNT 2
 
-#define WILD_THEME_ROW 1
-#define TRAINER_THEME_ROW 2
+#define CATEGORY_COUNT 2
 #define SONGS_COUNT 5
-
-
 
 static const u32 sBg3_Tiles[] = INCBIN_U32("graphics/music_selector/bg3_tileset.4bpp.lz");
 static const u32 sBg3_Map[] = INCBIN_U32("graphics/music_selector/bg3_map.bin.lz");
@@ -50,10 +45,7 @@ static const u32 sBg2_Map[] = INCBIN_U32("graphics/music_selector/bg2_map.bin.lz
 static const u16 sBg2Pal[] = INCBIN_U16("graphics/music_selector/bg2_tileset.gbapal");
 
 
-
-
-
-struct BattleDebugMenu
+struct MusicMenu
 {
 
     u8 mainListWindowId;
@@ -68,29 +60,14 @@ struct BattleDebugMenu
     u8 wildThemeIndex;
     u8 trainerThemeIndex;
 
-
     u8 rowIndex;
-
     u8 activeWindow;
-;
-    const struct BitfieldInfo *bitfield;
+
 };
-
-
-
-struct __attribute__((__packed__)) BitfieldInfo  /*
-	Por lo visto está asociado al cambio de estados. Bien podríamos removerlo
-*/
-{
-    u8 bitsCount;
-    u8 currBit;
-};
-
-
 
 enum
 {
-    LIST_ITEM_WILD, // El comportamiento de PP Es similar a lo que queremos
+    LIST_ITEM_WILD,
     LIST_ITEM_TRAINER,
     LIST_ITEM_COUNT
 };
@@ -100,13 +77,6 @@ enum
     ACTIVE_WIN_MAIN,
     ACTIVE_WIN_SECONDARY,
     ACTIVE_WIN_MODIFY
-};
-
-enum
-{
-    VAL_U16,
-    FLAGs,   
-    VARs,
 };
 
 static const u8 sText_EmptyString[] = _("");
@@ -129,42 +99,16 @@ const u8 gSongsNames[][40] = {
     [5] = _("Kanto Gym"),
 };
 
+
+
 const u16 gSongsAvailable[SONGS_COUNT] = {
-    MUS_BATTLE27, //474
-	MUS_BATTLE20, //510
+    MUS_BATTLE27,
+	MUS_BATTLE20,
 	MUS_RG_VS_YASEI,
 	MUS_RG_VS_TORE,
     MUS_RG_VS_GYM,
 };
 
-
-
-
-struct debug_VAR
-{
-    u16 var;
-};
-
-
-struct debug_FLAG{
-    u16 flag;
-};
-
-
-
-
-static const struct debug_VAR gDebugVar[] = 
-{
-    {VAR_UNUSED_0x404E},
-    {VAR_ROUTE109_STATE}
-
-};
-
-static const struct debug_FLAG gDebugFlag[] =
-{
-    {FLAG_UNUSED_0x020},
-    {FLAG_UNUSED_0x021}
-};
 
 static const struct ListMenuItem sMainListItems[] =
 {
@@ -172,18 +116,6 @@ static const struct ListMenuItem sMainListItems[] =
     {sText_Main_Flags, LIST_ITEM_TRAINER},
 };
 
-static const struct ListMenuItem sVarList[] =
-{
-    {sText_Var404E, 0},
-    {sText_Var406A, 1},
-};
-
-
-static const struct ListMenuItem sFlagList[] =
-{
-    {sText_Var404E, 0},
-    {sText_Var406A, 1},
-};
 
 /* 
 	La estructura que viene ahora no se porque existe
@@ -303,18 +235,6 @@ static const struct BgTemplate sBgTemplates[] =
 	}
 };
 
-static const u8 sBitsToMaxDigit[] =
-{
-    [0] = 0,
-    [1] = 1, // max 1
-    [2] = 1, // max 3
-    [3] = 1, // max 7
-    [4] = 2, // max 15
-    [5] = 2, // max 31
-    [6] = 2, // max 63
-    [7] = 3, // max 127
-    [8] = 3, // max 255
-};
 
 static const bool8 sHasChangeableEntries[LIST_ITEM_COUNT] =
 {
@@ -330,17 +250,17 @@ void CallBack2_BattleMusicMenu(void);
 static void Task_DebugMenuFadeIn(u8 taskId);
 static void Task_DebugMenuProcessInput(u8 taskId);
 static void Task_DebugMenuFadeOut(u8 taskId);
-static void CreateSecondaryListMenu(struct BattleDebugMenu *data);
+static void CreateSecondaryListMenu(struct MusicMenu *data);
 static void PadString(const u8 *src, u8 *dst);
-static void PrintSecondaryEntries(struct BattleDebugMenu *data, u8 wildIndex, u8 trainerIndex);
-static void DestroyModifyArrows(struct BattleDebugMenu *data);
-static void PrintDigitChars(struct BattleDebugMenu *data);
+static void PrintSecondaryEntries(struct MusicMenu *data, u8 wildIndex, u8 trainerIndex);
+static void DestroyModifyArrows(struct MusicMenu *data);
+static void PrintDigitChars(struct MusicMenu *data);
 static const u32 GetBitfieldToAndValue(u32 currBit, u32 bitsCount);
 static const u32 GetBitfieldValue(u32 value, u32 currBit, u32 bitsCount);
 static u32 CharDigitsToValue(u8 *charDigits, u8 maxDigits);
 static void ValueToCharDigits(u8 *charDigits, u32 newValue, u8 maxDigits);
-static void SetUpModifyArrows(struct BattleDebugMenu *data);
-static void UpdateValue(struct BattleDebugMenu *data);
+static void SetUpModifyArrows(struct MusicMenu *data);
+static void UpdateValue(struct MusicMenu *data);
 static void Task_HandleMainInputs(u8 taskId);
 
 /*
@@ -378,11 +298,11 @@ static void InitAndShowBgsFromTemplate()
 
 
 
-static struct BattleDebugMenu *GetStructPtr(u8 taskId)
+static struct MusicMenu *GetStructPtr(u8 taskId)
 {
     u8 *taskDataPtr = (u8*)(&gTasks[taskId].data[0]);
 
-    return (struct BattleDebugMenu*)(T1_READ_PTR(taskDataPtr));
+    return (struct MusicMenu*)(T1_READ_PTR(taskDataPtr));
 }
 
 static void SetStructPtr(u8 taskId, void *ptr)
@@ -433,7 +353,7 @@ void StartMusicMenu_CB2() //Este equivale a StartTutorialMenu_CB2() del video
 void CallBack2_BattleMusicMenu(void)
 {
     u8 taskId;
-    struct BattleDebugMenu *data;
+    struct MusicMenu *data;
 
     switch (gMain.state)
     {
@@ -470,7 +390,7 @@ void CallBack2_BattleMusicMenu(void)
         break;
     case 4:
         taskId = CreateTask(Task_DebugMenuFadeIn, 0);
-        data = AllocZeroed(sizeof(struct BattleDebugMenu));
+        data = AllocZeroed(sizeof(struct MusicMenu));
         SetStructPtr(taskId, data);
 
 
@@ -482,8 +402,8 @@ void CallBack2_BattleMusicMenu(void)
 
         data->currentMainListItemId = 0;
         data->activeWindow = ACTIVE_WIN_MAIN;
-        data->wildThemeIndex = 1;
-        data->trainerThemeIndex = 2;
+        data->wildThemeIndex = VarGet(VAR_WILD_MUSIC)+1;
+        data->trainerThemeIndex = VarGet(VAR_TRAINER_MUSIC)+1;
 
         CreateSecondaryListMenu(data);
         PrintSecondaryEntries(data, data->wildThemeIndex, data->trainerThemeIndex);
@@ -510,72 +430,25 @@ static void Task_DebugMenuFadeIn(u8 taskId)
         gTasks[taskId].func = Task_DebugMenuProcessInput;
 }
 
+
+
+
 static void Task_DebugMenuProcessInput(u8 taskId)
 {
     s32 listItemId = 0;
-    struct BattleDebugMenu *data = GetStructPtr(taskId);
+    struct MusicMenu *data = GetStructPtr(taskId);
 
-    // Exit the menu.
-    if (gMain.newKeys & B_BUTTON)
+    
+    if ( (gMain.newKeys & DPAD_DOWN) && (data->currentMainListItemId != CATEGORY_COUNT-1) )
     {
-        BeginNormalPaletteFade(-1, 0, 0, 0x10, 0);
-        gTasks[taskId].func = Task_DebugMenuFadeOut;
-        return;
+        data->currentMainListItemId+= 1;
+    }
+ 
+    if ( (gMain.newKeys & DPAD_UP) && (data->currentMainListItemId != LIST_ITEM_WILD) )
+    {
+        data->currentMainListItemId-= 1;
     }
     
-    if (gMain.newKeys & SELECT_BUTTON)
-	{	
-        Overworld_ChangeMusicTo(VarGet(VAR_UNUSED_0x404E));
-        data->activeWindow == ACTIVE_WIN_MAIN;
-        gTasks[taskId].func = Task_DebugMenuProcessInput;
-
-	}
-
-    // A main list item is active, handle input.
-    if (data->activeWindow == ACTIVE_WIN_MAIN)
-    {
-        listItemId = ListMenu_ProcessInput(data->mainListTaskId);
-        if (listItemId != LIST_CANCEL && listItemId != LIST_NOTHING_CHOSEN && listItemId < LIST_ITEM_COUNT)
-        {
-            data->currentMainListItemId = listItemId;
-
-            // Create the secondary menu list.
-            CreateSecondaryListMenu(data);
-            PrintSecondaryEntries(data, data->wildThemeIndex, data->trainerThemeIndex);
-            //data->activeWindow = ACTIVE_WIN_SECONDARY;
-            gTasks[taskId].func = Task_HandleMainInputs;
-        }
-    }
-}
-
-
-static void Task_HandleMainInputs(u8 taskId)
-{
-    struct BattleDebugMenu *data = GetStructPtr(taskId);
-    if (gMain.newKeys & A_BUTTON)
-	{	
-        //ClearWindowTilemap(SCREEN_TITLE);
-		//RemoveWindow(SCREEN_TITLE);
-		//CleanupOverworldWindowsAndTilemaps();
-		PlaySE(SE_SELECT);
-        data->activeWindow == ACTIVE_WIN_MAIN;
-        VarSet(VAR_UNUSED_0x404E, gSongsAvailable[data->wildThemeIndex-1]);
-        gTasks[taskId].func = Task_DebugMenuProcessInput;
-        
-	}
-
-    if (gMain.newKeys & B_BUTTON)
-	{	
-        //ClearWindowTilemap(SCREEN_TITLE);
-		//RemoveWindow(SCREEN_TITLE);
-		//CleanupOverworldWindowsAndTilemaps();
-		PlaySE(SE_SELECT);
-        data->activeWindow == ACTIVE_WIN_MAIN;
-        VarSet(VAR_UNUSED_0x404E, gSongsAvailable[data->wildThemeIndex-1]);
-        gTasks[taskId].func = Task_DebugMenuProcessInput;
-
-	}
-
     if (gMain.newKeys & DPAD_RIGHT)
 	{
 		PlaySE(SE_SELECT);
@@ -600,12 +473,7 @@ static void Task_HandleMainInputs(u8 taskId)
                     data->trainerThemeIndex += 1;
                     break;
                 }
-
             }
-        //ClearWindowTilemap(data->secondaryListWindowId);
-		//RemoveWindow(data->secondaryListWindowId);
-        //CreateSecondaryListMenu(data);
-        PrintSecondaryEntries(data, data->wildThemeIndex, data->trainerThemeIndex);
     }
     if (gMain.newKeys & DPAD_LEFT)
 	{
@@ -626,13 +494,57 @@ static void Task_HandleMainInputs(u8 taskId)
             case LIST_ITEM_TRAINER:
                 data->trainerThemeIndex -= 1;
                 break;
-
             }
-        //ClearWindowTilemap(data->secondaryListWindowId);
-		//RemoveWindow(data->secondaryListWindowId);
-        //CreateSecondaryListMenu(data);
-        PrintSecondaryEntries(data, data->wildThemeIndex, data->trainerThemeIndex);
     }
+
+
+
+    PrintSecondaryEntries(data, data->wildThemeIndex, data->trainerThemeIndex);
+    
+    if (gMain.newKeys & SELECT_BUTTON)
+	{	
+        Overworld_ChangeMusicTo(VarGet(VAR_WILD_MUSIC));
+        return;
+
+	}
+
+    if (gMain.newKeys & A_BUTTON)
+	{	
+		PlaySE(SE_SELECT);
+        VarSet(VAR_WILD_MUSIC, data->wildThemeIndex-1 );
+        VarSet(VAR_TRAINER_MUSIC, data->trainerThemeIndex-1 );
+        
+	}
+    
+    if (gMain.newKeys & B_BUTTON)
+    {
+        BeginNormalPaletteFade(-1, 0, 0, 0x10, 0);
+        gTasks[taskId].func = Task_DebugMenuFadeOut;
+    }
+
+
+
+    if (data->activeWindow == ACTIVE_WIN_MAIN)
+    {
+        listItemId = ListMenu_ProcessInput(data->mainListTaskId);
+        if (listItemId != LIST_CANCEL && listItemId != LIST_NOTHING_CHOSEN && listItemId < LIST_ITEM_COUNT)
+        {
+            data->currentMainListItemId = listItemId;
+
+            CreateSecondaryListMenu(data);
+            PrintSecondaryEntries(data, data->wildThemeIndex, data->trainerThemeIndex);
+
+        }
+    }
+}
+
+
+
+
+static void Task_HandleMainInputs(u8 taskId)
+{
+    struct MusicMenu *data = GetStructPtr(taskId);
+    
 }
 
 
@@ -640,7 +552,7 @@ static void Task_DebugMenuFadeOut(u8 taskId)
 {
     if (!gPaletteFade.active)
     {
-        struct BattleDebugMenu *data = GetStructPtr(taskId);
+        struct MusicMenu *data = GetStructPtr(taskId);
         DestroyListMenuTask(data->mainListTaskId, 0, 0);
         if (data->secondaryListTaskId != 0xFF)
             DestroyListMenuTask(data->secondaryListTaskId, 0, 0);
@@ -654,7 +566,7 @@ static void Task_DebugMenuFadeOut(u8 taskId)
 }
 
 
-static void CreateSecondaryListMenu(struct BattleDebugMenu *data)
+static void CreateSecondaryListMenu(struct MusicMenu *data)
 {
     struct WindowTemplate winTemplate;
     struct ListMenuTemplate listTemplate;
@@ -679,7 +591,7 @@ static void CreateSecondaryListMenu(struct BattleDebugMenu *data)
 
     listTemplate.totalItems = itemsCount;
     listTemplate.maxShowed = itemsCount;
-    if (listTemplate.maxShowed > 2 && !sHasChangeableEntries[data->currentMainListItemId]) // OJO
+    if (listTemplate.maxShowed > 2) // OJO
         listTemplate.maxShowed = 2;
     listTemplate.windowId = data->secondaryListWindowId;
 
@@ -688,16 +600,13 @@ static void CreateSecondaryListMenu(struct BattleDebugMenu *data)
 }
 
 
-static void PrintSecondaryEntries(struct BattleDebugMenu *data, u8 wildIndex, u8 trainerIndex)
+static void PrintSecondaryEntries(struct MusicMenu *data, u8 wildIndex, u8 trainerIndex)
 {
     u8 text[20];
     s32 i;
     struct TextPrinterTemplate printer;
     u8 yMultiplier;
 
-    // Do not print entries if they are not changing.
-    if (!sHasChangeableEntries[data->currentMainListItemId])
-        return;
 
     yMultiplier = (GetFontAttribute(sSecondaryListTemplate.fontId, 1) + sSecondaryListTemplate.itemVerticalPadding);
 
@@ -736,30 +645,3 @@ static void PadString(const u8 *src, u8 *dst)
 
     dst[i] = EOS;
 }
-
-
-//static void UpdateValue(struct BattleDebugMenu *data)
-//{
-//    bool8 value_Flag;
-//    switch (data->modifyArrows.typeOfVal)
-//    {
-//    case VAL_U16:
-//        *(u16*)(data->modifyArrows.modifiedValPtr) = data->modifyArrows.currValue;
-//        break;
-//    
-//    case FLAGs:
-//        *(u16*)(data->modifyArrows.modifiedValPtr) = data->modifyArrows.currValue;
-//        if(value_Flag == 1){
-//            FlagSet(gDebugFlag[data->currentSecondaryListItemId].flag);
-//        }
-//        else{
-//            FlagClear(gDebugFlag[data->currentSecondaryListItemId].flag);
-//        }
-//
-//
-//    case VARs:
-//        *(u16*)(data->modifyArrows.modifiedValPtr) = data->modifyArrows.currValue;
-//        VarSet(gDebugVar[data->currentSecondaryListItemId].var, (*(u16*)data->modifyArrows.modifiedValPtr));
-//        break;
-//    }
-//}

@@ -18,6 +18,7 @@
 #include "main.h"
 #include "overworld.h"
 #include "m4a.h"
+#include "music_selector.h"
 #include "party_menu.h"
 #include "pokedex.h"
 #include "pokeblock.h"
@@ -6293,7 +6294,7 @@ u16 GetBattleBGM(void)
             if (gBattleTypeFlags & BATTLE_TYPE_FRONTIER)
                 return MUS_BATTLE35;
             if (!StringCompare(gTrainers[gTrainerBattleOpponent_A].trainerName, gText_BattleWallyName))
-                return MUS_BATTLE20;
+                return gSongsAvailable[VarGet(VAR_TRAINER_MUSIC)];
             return MUS_BATTLE35;
         case TRAINER_CLASS_ELITE_FOUR:
             return MUS_BATTLE38;
@@ -6306,11 +6307,11 @@ u16 GetBattleBGM(void)
         case TRAINER_CLASS_PYRAMID_KING:
             return MUS_VS_FRONT;
         default:
-            return MUS_BATTLE20;
+            return gSongsAvailable[VarGet(VAR_TRAINER_MUSIC)];
         }
     }
     else
-        return VarGet(VAR_UNUSED_0x404E);
+        return gSongsAvailable[VarGet(VAR_WILD_MUSIC)];
 }
 
 void PlayBattleBGM(void)

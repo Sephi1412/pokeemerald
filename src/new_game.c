@@ -206,6 +206,8 @@ void NewGameInitData(void)
     WipeTrainerNameRecords();
     ResetTrainerHillResults();
     ResetContestLinkResults();
+    VarSet(VAR_WILD_MUSIC, 0);
+    VarSet(VAR_TRAINER_MUSIC, 1);
 }
 
 static void ResetMiniGamesResults(void)

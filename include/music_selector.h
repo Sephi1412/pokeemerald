@@ -6,4 +6,7 @@ void StartMusicMenu_CB2();
 void CallBack2_BattleMusicMenu(void);
 
 
+extern const u16 gSongsAvailable[];
+
+
 #endif // GUARD_MUSIC_SELECTOR_H
