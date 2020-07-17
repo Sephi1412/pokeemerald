@@ -6310,7 +6310,7 @@ u16 GetBattleBGM(void)
         }
     }
     else
-        return MUS_BATTLE27;
+        return VarGet(VAR_UNUSED_0x404E);
 }
 
 void PlayBattleBGM(void)

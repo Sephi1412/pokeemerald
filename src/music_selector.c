@@ -36,23 +36,24 @@
 #define MAX_MODIFY_DIGITS 4
 #define MAX_VAR_COUNT 2
 
+#define WILD_THEME_ROW 1
+#define TRAINER_THEME_ROW 2
+#define SONGS_COUNT 5
 
 
-struct BattleDebugModifyArrows
-{
-    u8 arrowSpriteId[2];
-    u16 minValue;
-    u16 maxValue;
-    int currValue;
-    u8 currentDigit;
-    u8 maxDigits;
-    u8 charDigits[MAX_MODIFY_DIGITS];
-    void *modifiedValPtr;
-    u8 typeOfVal;
-};
+
+static const u32 sBg3_Tiles[] = INCBIN_U32("graphics/music_selector/bg3_tileset.4bpp.lz");
+static const u32 sBg3_Map[] = INCBIN_U32("graphics/music_selector/bg3_map.bin.lz");
+static const u16 sBg3Pal[] = INCBIN_U16("graphics/music_selector/bg3_tileset.gbapal");
+static const u32 sBg2_Tiles[] = INCBIN_U32("graphics/music_selector/bg2_tileset.4bpp.lz");
+static const u32 sBg2_Map[] = INCBIN_U32("graphics/music_selector/bg2_map.bin.lz");
+static const u16 sBg2Pal[] = INCBIN_U16("graphics/music_selector/bg2_tileset.gbapal");
 
 
-struct  BattleDebugMenu
+
+
+
+struct BattleDebugMenu
 {
 
     u8 mainListWindowId;
@@ -64,11 +65,14 @@ struct  BattleDebugMenu
     u8 currentSecondaryListItemId;
 
     u8 actualPos;
+    u8 wildThemeIndex;
+    u8 trainerThemeIndex;
+
+
     u8 rowIndex;
 
     u8 activeWindow;
-
-    struct BattleDebugModifyArrows modifyArrows;
+;
     const struct BitfieldInfo *bitfield;
 };
 
@@ -117,10 +121,20 @@ static u16 value_Flag;
 
 
 
-const u8 gSongsNames[][30] = {
+const u8 gSongsNames[][40] = {
 	[1] = _("Hoenn Wild"),
-	[2] = _("Kanto Wild"),
-	[3] = _("Johto Wild"),
+	[2] = _("Hoenn Trainer"),
+	[3] = _("Kanto Wild"),
+	[4] = _("Kanto Trainer"),
+    [5] = _("Kanto Gym"),
+};
+
+const u16 gSongsAvailable[SONGS_COUNT] = {
+    MUS_BATTLE27, //474
+	MUS_BATTLE20, //510
+	MUS_RG_VS_YASEI,
+	MUS_RG_VS_TORE,
+    MUS_RG_VS_GYM,
 };
 
 
@@ -204,7 +218,7 @@ static const struct ListMenuTemplate sMainListTemplate =
     .cursor_X = 0,
     .upText_Y = 1,
     .cursorPal = 2,
-    .fillValue = 1,
+    .fillValue = 0,
     .cursorShadowPal = 3,
     .lettersSpacing = 1,
     .itemVerticalPadding = 0,
@@ -239,7 +253,7 @@ static const struct WindowTemplate sMainListWindowTemplate =
 {
     .bg = 0,
     .tilemapLeft = 1,
-    .tilemapTop = 3,
+    .tilemapTop = 6,
     .width = 10,
     .height = 12,
     .paletteNum = 0xF,
@@ -250,23 +264,13 @@ static const struct WindowTemplate sSecondaryListWindowTemplate =
 {
     .bg = 0,
     .tilemapLeft = 12,
-    .tilemapTop = 3,
-    .width = 10,
+    .tilemapTop = 6,
+    .width = 16,
     .height = 2,
     .paletteNum = 0xF,
     .baseBlock = 0xA0
 };
 
-static const struct WindowTemplate sModifyWindowTemplate =
-{
-    .bg = 0,
-    .tilemapLeft = 25,
-    .tilemapTop = 2,
-    .width = 4,
-    .height = 2,
-    .paletteNum = 0xF,
-    .baseBlock = 0x200
-};
 
 static const struct BgTemplate sBgTemplates[] =
 {
@@ -280,14 +284,23 @@ static const struct BgTemplate sBgTemplates[] =
        .baseTile = 0
    },
    {
-       .bg = 1,
-       .charBaseIndex = 2,
-       .mapBaseIndex = 29,
-       .screenSize = 0,
-       .paletteMode = 0,
-       .priority = 0,
-       .baseTile = 0
-   }
+		.bg = 2,
+		.charBaseIndex = 2,
+		.mapBaseIndex = 18,
+		.screenSize = 0,
+		.paletteMode = 0,
+		.priority = 2,
+		.baseTile = 2,
+	},
+	{
+		.bg = 3,
+		.charBaseIndex = 3,
+		.mapBaseIndex = 26,
+		.screenSize = 0,
+		.paletteMode = 0,
+		.priority = 3,
+		.baseTile = 3,
+	}
 };
 
 static const u8 sBitsToMaxDigit[] =
@@ -327,7 +340,6 @@ static const u32 GetBitfieldValue(u32 value, u32 currBit, u32 bitsCount);
 static u32 CharDigitsToValue(u8 *charDigits, u8 maxDigits);
 static void ValueToCharDigits(u8 *charDigits, u32 newValue, u8 maxDigits);
 static void SetUpModifyArrows(struct BattleDebugMenu *data);
-static bool32 TryMoveDigit(struct BattleDebugModifyArrows *modArrows, bool32 moveUp);
 static void UpdateValue(struct BattleDebugMenu *data);
 static void Task_HandleMainInputs(u8 taskId);
 
@@ -342,6 +354,27 @@ static void Task_HandleMainInputs(u8 taskId);
 
 */
 
+
+
+static void InitAndShowBgsFromTemplate()
+{
+	InitBgsFromTemplates(0, sBgTemplates, ARRAY_COUNT(sBgTemplates));
+	LZ77UnCompVram(sBg3_Tiles, (void *) VRAM + 0x4000 * 3);
+	LZ77UnCompVram(sBg3_Map, (u16*) BG_SCREEN_ADDR(26));
+	LZ77UnCompVram(sBg2_Tiles, (void *) VRAM + 0x4000 * 2);
+	LZ77UnCompVram(sBg2_Map, (u16*) BG_SCREEN_ADDR(18));
+
+	LoadPalette(sBg3Pal, 0x00, 0x20);
+	LoadPalette(sBg2Pal, 0x10, 0x20);
+	
+	ResetAllBgsCoordinates();
+	
+	//ShowBg(0);
+	//ShowBg(1);
+	ShowBg(2);
+	ShowBg(3);
+	
+}
 
 
 
@@ -375,6 +408,8 @@ static void MainCallBack2(void)
 static void VBlankCallBack(void)
 {
     LoadOam();
+    ChangeBgX(3, 30, 2);
+    ChangeBgY(3, 30, 2);
     ProcessSpriteCopyRequests();
     TransferPlttBuffer();
 }
@@ -428,6 +463,7 @@ void CallBack2_BattleMusicMenu(void)
         gMain.state++;
         break;
     case 3:
+        InitAndShowBgsFromTemplate();
         LoadPalette(sBgColor, 0, 2);
         LoadPalette(GetOverworldTextboxPalettePtr(), 0xf0, 16);
         gMain.state++;
@@ -446,9 +482,11 @@ void CallBack2_BattleMusicMenu(void)
 
         data->currentMainListItemId = 0;
         data->activeWindow = ACTIVE_WIN_MAIN;
+        data->wildThemeIndex = 1;
+        data->trainerThemeIndex = 2;
 
         CreateSecondaryListMenu(data);
-        PrintSecondaryEntries(data, data->actualPos, 2);
+        PrintSecondaryEntries(data, data->wildThemeIndex, data->trainerThemeIndex);
 
         
         data->secondaryListTaskId = 0xFF;
@@ -478,12 +516,20 @@ static void Task_DebugMenuProcessInput(u8 taskId)
     struct BattleDebugMenu *data = GetStructPtr(taskId);
 
     // Exit the menu.
-    if (gMain.newKeys & SELECT_BUTTON)
+    if (gMain.newKeys & B_BUTTON)
     {
         BeginNormalPaletteFade(-1, 0, 0, 0x10, 0);
         gTasks[taskId].func = Task_DebugMenuFadeOut;
         return;
     }
+    
+    if (gMain.newKeys & SELECT_BUTTON)
+	{	
+        Overworld_ChangeMusicTo(VarGet(VAR_UNUSED_0x404E));
+        data->activeWindow == ACTIVE_WIN_MAIN;
+        gTasks[taskId].func = Task_DebugMenuProcessInput;
+
+	}
 
     // A main list item is active, handle input.
     if (data->activeWindow == ACTIVE_WIN_MAIN)
@@ -495,7 +541,7 @@ static void Task_DebugMenuProcessInput(u8 taskId)
 
             // Create the secondary menu list.
             CreateSecondaryListMenu(data);
-            PrintSecondaryEntries(data, 1, 2);
+            PrintSecondaryEntries(data, data->wildThemeIndex, data->trainerThemeIndex);
             //data->activeWindow = ACTIVE_WIN_SECONDARY;
             gTasks[taskId].func = Task_HandleMainInputs;
         }
@@ -512,27 +558,80 @@ static void Task_HandleMainInputs(u8 taskId)
 		//RemoveWindow(SCREEN_TITLE);
 		//CleanupOverworldWindowsAndTilemaps();
 		PlaySE(SE_SELECT);
+        data->activeWindow == ACTIVE_WIN_MAIN;
+        VarSet(VAR_UNUSED_0x404E, gSongsAvailable[data->wildThemeIndex-1]);
+        gTasks[taskId].func = Task_DebugMenuProcessInput;
+        
+	}
+
+    if (gMain.newKeys & B_BUTTON)
+	{	
+        //ClearWindowTilemap(SCREEN_TITLE);
+		//RemoveWindow(SCREEN_TITLE);
+		//CleanupOverworldWindowsAndTilemaps();
+		PlaySE(SE_SELECT);
+        data->activeWindow == ACTIVE_WIN_MAIN;
+        VarSet(VAR_UNUSED_0x404E, gSongsAvailable[data->wildThemeIndex-1]);
+        gTasks[taskId].func = Task_DebugMenuProcessInput;
 
 	}
+
     if (gMain.newKeys & DPAD_RIGHT)
 	{
 		PlaySE(SE_SELECT);
-        data->actualPos += 1;
+        switch (data->currentMainListItemId)
+            {
+            case LIST_ITEM_COUNT:
+            case LIST_ITEM_WILD:
+                if(data->wildThemeIndex == SONGS_COUNT){ 
+                    data->wildThemeIndex = 1;
+                    break;
+                }    
+                else{
+                    data->wildThemeIndex += 1;
+                    break;
+                }
+            case LIST_ITEM_TRAINER:
+                if(data->trainerThemeIndex == SONGS_COUNT){ 
+                    data->trainerThemeIndex = 1;
+                    break;
+                }    
+                else{
+                    data->trainerThemeIndex += 1;
+                    break;
+                }
 
-        ClearWindowTilemap(data->secondaryListWindowId);
-		RemoveWindow(data->secondaryListWindowId);
-        CreateSecondaryListMenu(data);
-        PrintSecondaryEntries(data, data->actualPos, 2);
+            }
+        //ClearWindowTilemap(data->secondaryListWindowId);
+		//RemoveWindow(data->secondaryListWindowId);
+        //CreateSecondaryListMenu(data);
+        PrintSecondaryEntries(data, data->wildThemeIndex, data->trainerThemeIndex);
     }
     if (gMain.newKeys & DPAD_LEFT)
 	{
+        
 		PlaySE(SE_SELECT);
-        data->actualPos -= 1;
+        switch (data->currentMainListItemId)
+            {
+            case LIST_ITEM_COUNT:
+            case LIST_ITEM_WILD:
+                if(data->wildThemeIndex == 1){
+                    data->wildThemeIndex = 3;
+                    break;
+                }    
+                else{
+                    data->wildThemeIndex -= 1;
+                    break;
+                }
+            case LIST_ITEM_TRAINER:
+                data->trainerThemeIndex -= 1;
+                break;
 
-        ClearWindowTilemap(data->secondaryListWindowId);
-		RemoveWindow(data->secondaryListWindowId);
-        CreateSecondaryListMenu(data);
-        PrintSecondaryEntries(data, data->actualPos, 2);
+            }
+        //ClearWindowTilemap(data->secondaryListWindowId);
+		//RemoveWindow(data->secondaryListWindowId);
+        //CreateSecondaryListMenu(data);
+        PrintSecondaryEntries(data, data->wildThemeIndex, data->trainerThemeIndex);
     }
 }
 
@@ -608,33 +707,21 @@ static void PrintSecondaryEntries(struct BattleDebugMenu *data, u8 wildIndex, u8
     printer.letterSpacing = 0;
     printer.lineSpacing = 1;
     printer.fgColor = 2;
-    printer.bgColor = 1;
+    printer.bgColor = 0;
     printer.shadowColor = 3;
     printer.x = sSecondaryListTemplate.item_X;
     printer.currentX = sSecondaryListTemplate.item_X;
     printer.currentChar = text;
 
-    switch (data->currentMainListItemId)
-    {
-    case LIST_ITEM_COUNT:
-    case LIST_ITEM_WILD:
-        PadString(gSongsNames[wildIndex], text);
-        printer.currentY = printer.y = (0 * yMultiplier) + sSecondaryListTemplate.upText_Y;
-        AddTextPrinter(&printer, 0, NULL);
-        PadString(gSongsNames[trainerIndex], text);
-        printer.currentY = printer.y = (1 * yMultiplier) + sSecondaryListTemplate.upText_Y;
-        AddTextPrinter(&printer, 0, NULL);
-        break;
+    FillWindowPixelBuffer(printer.windowId, 0);
+    PadString(gSongsNames[wildIndex], text);
+    printer.currentY = printer.y = (0 * yMultiplier) + sSecondaryListTemplate.upText_Y;
+    AddTextPrinter(&printer, 0, NULL);
+    PadString(gSongsNames[trainerIndex], text);
+    printer.currentY = printer.y = (1 * yMultiplier) + sSecondaryListTemplate.upText_Y;
+    AddTextPrinter(&printer, 0, NULL);
+
     
-    case LIST_ITEM_TRAINER:
-        PadString(sText_Flag_0x20, text);
-        printer.currentY = printer.y = (0 * yMultiplier) + sSecondaryListTemplate.upText_Y;
-        AddTextPrinter(&printer, 0, NULL);
-        PadString(sText_Flag_0x21, text);
-        printer.currentY = printer.y = (1 * yMultiplier) + sSecondaryListTemplate.upText_Y;
-        AddTextPrinter(&printer, 0, NULL);
-        break;
-    }
 }
 
 static void PadString(const u8 *src, u8 *dst)
@@ -651,28 +738,28 @@ static void PadString(const u8 *src, u8 *dst)
 }
 
 
-static void UpdateValue(struct BattleDebugMenu *data)
-{
-    bool8 value_Flag;
-    switch (data->modifyArrows.typeOfVal)
-    {
-    case VAL_U16:
-        *(u16*)(data->modifyArrows.modifiedValPtr) = data->modifyArrows.currValue;
-        break;
-    
-    case FLAGs:
-        *(u16*)(data->modifyArrows.modifiedValPtr) = data->modifyArrows.currValue;
-        if(value_Flag == 1){
-            FlagSet(gDebugFlag[data->currentSecondaryListItemId].flag);
-        }
-        else{
-            FlagClear(gDebugFlag[data->currentSecondaryListItemId].flag);
-        }
-
-
-    case VARs:
-        *(u16*)(data->modifyArrows.modifiedValPtr) = data->modifyArrows.currValue;
-        VarSet(gDebugVar[data->currentSecondaryListItemId].var, (*(u16*)data->modifyArrows.modifiedValPtr));
-        break;
-    }
-}
+//static void UpdateValue(struct BattleDebugMenu *data)
+//{
+//    bool8 value_Flag;
+//    switch (data->modifyArrows.typeOfVal)
+//    {
+//    case VAL_U16:
+//        *(u16*)(data->modifyArrows.modifiedValPtr) = data->modifyArrows.currValue;
+//        break;
+//    
+//    case FLAGs:
+//        *(u16*)(data->modifyArrows.modifiedValPtr) = data->modifyArrows.currValue;
+//        if(value_Flag == 1){
+//            FlagSet(gDebugFlag[data->currentSecondaryListItemId].flag);
+//        }
+//        else{
+//            FlagClear(gDebugFlag[data->currentSecondaryListItemId].flag);
+//        }
+//
+//
+//    case VARs:
+//        *(u16*)(data->modifyArrows.modifiedValPtr) = data->modifyArrows.currValue;
+//        VarSet(gDebugVar[data->currentSecondaryListItemId].var, (*(u16*)data->modifyArrows.modifiedValPtr));
+//        break;
+//    }
+//}

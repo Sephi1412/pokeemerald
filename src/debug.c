@@ -1,5 +1,3 @@
-#if DEBUG
-
 #include "global.h"
 #include "battle.h"
 #include "debug.h"
@@ -871,5 +869,3 @@ static void UpdateValue(struct BattleDebugMenu *data)
         break;
     }
 }
-
-#endif
