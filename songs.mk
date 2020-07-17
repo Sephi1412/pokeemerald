@@ -633,6 +633,9 @@ $(MID_SUBDIR)/mus_vs_rekku.s: %.s: %.mid
 $(MID_SUBDIR)/mus_yama_eye.s: %.s: %.mid
 	$(MID) $< $@ -E -R$(STD_REVERB) -G097 -V076
 
+$(MID_SUBDIR)/mus_swsh_battle_tower.s: %.s: %.mid
+	$(MID) $< $@ -E -R$(STD_REVERB) -G191 -V090
+
 $(MID_SUBDIR)/ph_choice_blend.s: %.s: %.mid
 	$(MID) $< $@ -E -G130 -P4
 

@@ -35,7 +35,7 @@
 
 
 #define CATEGORY_COUNT 2
-#define SONGS_COUNT 5
+#define SONGS_COUNT 6
 
 static const u32 sBg3_Tiles[] = INCBIN_U32("graphics/music_selector/bg3_tileset.4bpp.lz");
 static const u32 sBg3_Map[] = INCBIN_U32("graphics/music_selector/bg3_map.bin.lz");
@@ -99,6 +99,7 @@ const u8 gSongsNames[][40] = {
 	[3] = _("Kanto Wild"),
 	[4] = _("Kanto Trainer"),
     [5] = _("Kanto Gym"),
+    [6] = _("Tower Battle SWSH"),
 };
 
 
@@ -109,6 +110,7 @@ const u16 gSongsAvailable[SONGS_COUNT] = {
 	MUS_RG_VS_YASEI,
 	MUS_RG_VS_TORE,
     MUS_RG_VS_GYM,
+    MUS_SWSH_TOWER,
 };
 
 
