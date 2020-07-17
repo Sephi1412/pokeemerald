@@ -546,13 +546,6 @@ static void Task_DebugMenuProcessInput(u8 taskId)
         return;
 
 	}
-
-    //if (gMain.newKeys & A_BUTTON)
-	//{	
-	//	PlaySE(SE_SELECT);
-    //    
-    //    
-	//}
     
     if (gMain.newKeys & B_BUTTON)
     {
