@@ -63,6 +63,8 @@ struct MusicMenu
     u8 rowIndex;
     u8 activeWindow;
 
+    bool8 songIsActive;
+
 };
 
 enum
@@ -404,6 +406,7 @@ void CallBack2_BattleMusicMenu(void)
         data->activeWindow = ACTIVE_WIN_MAIN;
         data->wildThemeIndex = VarGet(VAR_WILD_MUSIC)+1;
         data->trainerThemeIndex = VarGet(VAR_TRAINER_MUSIC)+1;
+        data->songIsActive = FALSE;
 
         CreateSecondaryListMenu(data);
         PrintSecondaryEntries(data, data->wildThemeIndex, data->trainerThemeIndex);
@@ -431,7 +434,20 @@ static void Task_DebugMenuFadeIn(u8 taskId)
 }
 
 
-
+static void playSongInMenu(u8 category)
+{
+    switch (category)
+    {
+    case LIST_ITEM_COUNT:
+    case LIST_ITEM_WILD:
+        Overworld_ChangeMusicTo(gSongsAvailable[VarGet(VAR_WILD_MUSIC)]);
+        break;
+    
+    case LIST_ITEM_TRAINER:
+        Overworld_ChangeMusicTo(gSongsAvailable[VarGet(VAR_TRAINER_MUSIC)]);
+        break;
+    }
+}
 
 static void Task_DebugMenuProcessInput(u8 taskId)
 {
@@ -441,11 +457,13 @@ static void Task_DebugMenuProcessInput(u8 taskId)
     
     if ( (gMain.newKeys & DPAD_DOWN) && (data->currentMainListItemId != CATEGORY_COUNT-1) )
     {
+        PlaySE(SE_SELECT);
         data->currentMainListItemId+= 1;
     }
  
     if ( (gMain.newKeys & DPAD_UP) && (data->currentMainListItemId != LIST_ITEM_WILD) )
     {
+        PlaySE(SE_SELECT);
         data->currentMainListItemId-= 1;
     }
     
@@ -497,24 +515,37 @@ static void Task_DebugMenuProcessInput(u8 taskId)
             }
     }
 
+    VarSet(VAR_WILD_MUSIC, data->wildThemeIndex-1 );
+    VarSet(VAR_TRAINER_MUSIC, data->trainerThemeIndex-1 );
 
 
     PrintSecondaryEntries(data, data->wildThemeIndex, data->trainerThemeIndex);
     
-    if (gMain.newKeys & SELECT_BUTTON)
+    if (gMain.newKeys & SELECT_BUTTON && !(data->songIsActive) )
 	{	
-        Overworld_ChangeMusicTo(VarGet(VAR_WILD_MUSIC));
+        //Overworld_SetSavedMusic(gSongsAvailable[VarGet(VAR_WILD_MUSIC)]);
+        //Overworld_ChangeMusicTo(gSongsAvailable[VarGet(VAR_WILD_MUSIC)]);
+        playSongInMenu(data->currentMainListItemId);
+        data->songIsActive = TRUE;
         return;
 
 	}
 
-    if (gMain.newKeys & A_BUTTON)
+    if (gMain.newKeys & SELECT_BUTTON && data->songIsActive )
 	{	
-		PlaySE(SE_SELECT);
-        VarSet(VAR_WILD_MUSIC, data->wildThemeIndex-1 );
-        VarSet(VAR_TRAINER_MUSIC, data->trainerThemeIndex-1 );
-        
+        Overworld_ClearSavedMusic();
+        playSongInMenu(data->currentMainListItemId);
+        data->songIsActive = FALSE;
+        return;
+
 	}
+
+    //if (gMain.newKeys & A_BUTTON)
+	//{	
+	//	PlaySE(SE_SELECT);
+    //    
+    //    
+	//}
     
     if (gMain.newKeys & B_BUTTON)
     {
