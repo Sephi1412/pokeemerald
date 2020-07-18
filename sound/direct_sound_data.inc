@@ -351,6 +351,34 @@ DirectSoundWaveData_sc88_xylophone::
 	.incbin "sound/direct_sound_samples/sc88_xylophone.bin"
 
 	.align 2
+DirectSoundWaveData_bw_bass_1::
+	.incbin "sound/direct_sound_samples/bw_bass_1.bin"
+
+	.align 2
+DirectSoundWaveData_bw_overdrive_guitar::
+	.incbin "sound/direct_sound_samples/bw_overdrive_guitar.bin"
+
+	.align 2
+DirectSoundWaveData_bw_distort_guitar_low::
+	.incbin "sound/direct_sound_samples/bw_distort_guitar_low.bin"
+
+	.align 2
+DirectSoundWaveData_bw_slapbass_1::
+	.incbin "sound/direct_sound_samples/bw_slapbass_1.bin"
+
+	.align 2
+DirectSoundWaveData_bw_trumpet_1::
+	.incbin "sound/direct_sound_samples/bw_trumpet_1.bin"
+
+	.align 2
+DirectSoundWaveData_bw_french_horn_1::
+	.incbin "sound/direct_sound_samples/bw_french_horn_1.bin"
+
+	.align 2
+DirectSoundWaveData_bw_french_horn_2::
+	.incbin "sound/direct_sound_samples/bw_french_horn_2.bin"
+
+	.align 2
 DirectSoundWaveData_873ECD8::
 	.incbin "sound/direct_sound_samples/873ECD8.bin"
 
