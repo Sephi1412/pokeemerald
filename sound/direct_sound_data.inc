@@ -351,6 +351,18 @@ DirectSoundWaveData_sc88_xylophone::
 	.incbin "sound/direct_sound_samples/sc88_xylophone.bin"
 
 	.align 2
+DirectSoundWaveData_bw_e4_synth_bass::
+	.incbin "sound/direct_sound_samples/bw_e4_synth_bass.bin"
+
+	.align 2
+DirectSoundWaveData_bw_e4_snare_drum::
+	.incbin "sound/direct_sound_samples/bw_e4_snare_drum.bin"
+
+	.align 2
+DirectSoundWaveData_bw_e4_bass_drum_elect::
+	.incbin "sound/direct_sound_samples/bw_e4_bass_drum_elect.bin"
+
+	.align 2
 DirectSoundWaveData_bw_bass_1::
 	.incbin "sound/direct_sound_samples/bw_bass_1.bin"
 

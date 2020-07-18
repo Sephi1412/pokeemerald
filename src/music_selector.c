@@ -110,7 +110,7 @@ const u16 gSongsAvailable[SONGS_COUNT] = {
 	MUS_RG_VS_YASEI,
 	MUS_RG_VS_TORE,
     MUS_RG_VS_GYM,
-    MUS_SWSH_TOWER,
+    TEST_DRUMS,
 };
 
 
