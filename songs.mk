@@ -636,7 +636,7 @@ $(MID_SUBDIR)/mus_yama_eye.s: %.s: %.mid
 $(MID_SUBDIR)/mus_swsh_battle_tower.s: %.s: %.mid
 	$(MID) $< $@ -E -R$(STD_REVERB) -G191 -V090
 
-$(MID_SUBDIR)/test_drums.s: %.s: %.mid
+$(MID_SUBDIR)/mus_bw_elite4.s: %.s: %.mid
 	$(MID) $< $@ -E -R$(STD_REVERB) -G193 -V090
 
 $(MID_SUBDIR)/ph_choice_blend.s: %.s: %.mid

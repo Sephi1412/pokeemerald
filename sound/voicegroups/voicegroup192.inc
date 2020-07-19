@@ -10,7 +10,7 @@ voicegroup192:: @ 8676148
 	voice_directsound_no_resample 60, 64, DirectSoundWaveData_sc88_standard_kick, 255, 0, 255, 242  @ 867619C
 	voice_square_1 0, 2, 0, 0, 15, 0  @ 86761A8
 	voice_directsound_no_resample 60, 64, DirectSoundWaveData_sc88_standard3_snare, 255, 0, 255, 242  @ 86761B4
-	voice_directsound_no_resample 60, 64, DirectSoundWaveData_sc88_standard_hand_clap, 255, 255, 255, 127  @ 86761C0
+	voice_directsound 64, 0, DirectSoundWaveData_bw_e4_snare_drum, 200, 0, 200, 160
 	voice_directsound_no_resample 60, 64, DirectSoundWaveData_sc88_orchestra_snare, 255, 0, 255, 242  @ 86761CC
 	voice_directsound 48, 44, DirectSoundWaveData_unknown_tom, 255, 210, 77, 204  @ 86761D8
 	voice_directsound_no_resample 60, 79, DirectSoundWaveData_unknown_close_hihat, 255, 127, 0, 188  @ 86761E4
@@ -38,8 +38,8 @@ voicegroup192:: @ 8676148
 	voice_directsound_no_resample 72, 94, DirectSoundWaveData_sc88_bongo_low, 255, 0, 255, 0  @ 86762EC
 	voice_directsound 60, 0, DirectSoundWaveData_bw_e4_bass_drum_elect, 255, 0, 255, 0  @ CORRESPONDE A BASS DRUM 
 	voice_directsound_no_resample 64, 64, DirectSoundWaveData_sd90_solo_snare, 255, 180, 175, 228  @ 8676304
-	voice_directsound 64, 0, DirectSoundWaveData_bw_e4_snare_drum, 220, 0, 220, 220  @ EN FL STUDIO, CORRESPONDE A ACOUSTIC SNARE
-	voice_directsound_no_resample 64, 54, DirectSoundWaveData_sc88_standard_hand_clap, 255, 255, 255, 127  @ 867631C
+	voice_directsound 64, 0, DirectSoundWaveData_bw_e4_snare_drums_side, 200, 0, 200, 160  @ EN FL STUDIO, CORRESPONDE A ACOUSTIC SNARE
+	voice_directsound 64, 0, DirectSoundWaveData_bw_e4_snare_drum, 200, 0, 200, 160 @ ERA HAND CLAP
 	voice_directsound_no_resample 64, 64, DirectSoundWaveData_sc88_orchestra_snare, 255, 0, 255, 242  @ 8676328
 	voice_directsound 64, 24, DirectSoundWaveData_sd90_ambient_tom, 255, 0, 255, 226  @ 8676334
 	voice_directsound_no_resample 64, 80, DirectSoundWaveData_sc88_orchestra_snare, 255, 0, 255, 242  @ 8676340
