@@ -9,7 +9,7 @@ voicegroup193:: @ 86A8CBC
 	voice_square_1 0, 2, 0, 0, 15, 0  @ 86A8D04
 	voice_square_1 0, 2, 0, 0, 15, 0  @ 86A8D10
 	voice_square_1 0, 2, 0, 0, 15, 0  @ 86A8D1C
-	voice_directsound 60, 0, DirectSoundWaveData_sc88_glockenspiel, 255, 165, 90, 216  @ 86A8D64
+	voice_square_2_alt 3, 0, 2, 6, 5  @ 86A9094
 	voice_square_1 0, 2, 0, 0, 15, 0  @ 86A8D34
 	voice_square_1 0, 2, 0, 0, 15, 0  @ 86A8D40
 	voice_square_1 0, 2, 0, 0, 15, 0  @ 86A8D4C
