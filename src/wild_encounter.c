@@ -268,6 +268,9 @@ static u8 ChooseWildMonLevel(const struct WildPokemon *wildPokemon)
     return min + rand;
 }
 
+
+
+
 static u16 GetCurrentMapWildMonHeaderId(void)
 {
     u16 i;
@@ -434,6 +437,48 @@ static bool8 TryGenerateWildMon(const struct WildPokemonInfo *wildMonInfo, u8 ar
     return TRUE;
 }
 
+
+static bool8 TryGenerateWildMon_Dynamic(const struct WildPokemonInfo *wildMonInfo, u8 area, u8 flags, u8 addToLevel)
+{
+    u8 wildMonIndex = 0;
+    u8 level;
+
+    switch (area)
+    {
+    case WILD_AREA_WATER:
+        if (TryGetAbilityInfluencedWildMonIndex(wildMonInfo->wildPokemon, TYPE_ELECTRIC, ABILITY_STATIC, &wildMonIndex))
+            break;
+
+        wildMonIndex = ChooseWildMonIndex_WaterRock();
+        break;
+    case WILD_AREA_ROCKS:
+        wildMonIndex = ChooseWildMonIndex_WaterRock();
+        break;
+
+    level = ChooseWildMonLevel(&wildMonInfo->wildPokemon[wildMonIndex]) + addToLevel;
+
+    case WILD_AREA_LAND:
+        if (TryGetAbilityInfluencedWildMonIndex(wildMonInfo->wildPokemon, TYPE_STEEL, ABILITY_MAGNET_PULL, &wildMonIndex))
+            break;
+        if (TryGetAbilityInfluencedWildMonIndex(wildMonInfo->wildPokemon, TYPE_ELECTRIC, ABILITY_STATIC, &wildMonIndex))
+            break;
+
+        wildMonIndex = ChooseWildMonIndex_Land();
+        level = ChooseWildMonLevel(&wildMonInfo->wildPokemon[wildMonIndex]);
+        break;
+    
+    }
+
+    
+    if (flags & WILD_CHECK_REPEL && !IsWildLevelAllowedByRepel(level))
+        return FALSE;
+    if (gMapHeader.mapLayoutId != LAYOUT_BATTLE_FRONTIER_BATTLE_PIKE_ROOM_WILD_MONS && flags & WILD_CHECK_KEEN_EYE && !IsAbilityAllowingEncounter(level))
+        return FALSE;
+
+    CreateWildMon(wildMonInfo->wildPokemon[wildMonIndex].species, level);
+}
+    
+
 static u16 GenerateFishingWildMon(const struct WildPokemonInfo *wildMonInfo, u8 rod)
 {
     u8 wildMonIndex = ChooseWildMonIndex_Fishing(rod);
@@ -528,6 +573,7 @@ static bool8 AreLegendariesInSootopolisPreventingEncounters(void)
 bool8 StandardWildEncounter(u16 currMetaTileBehavior, u16 previousMetaTileBehavior)
 {
     u16 headerId;
+    u8 addToLevel;
     struct Roamer *roamer;
 
     if (sWildEncountersDisabled == TRUE)
@@ -593,7 +639,16 @@ bool8 StandardWildEncounter(u16 currMetaTileBehavior, u16 previousMetaTileBehavi
                     BattleSetup_StartWildBattle();
                     return TRUE;
                 }
+                if( MetatileBehavior_IsPokeGrass_Dynamic(currMetaTileBehavior) )
+                {
+                    addToLevel = 20;
+                    if (TryGenerateWildMon_Dynamic(gWildMonHeaders[headerId].landMonsInfo, WILD_AREA_LAND, WILD_CHECK_REPEL | WILD_CHECK_KEEN_EYE, addToLevel) == TRUE)
+                    {
+                        BattleSetup_StartWildBattle();
+                        return TRUE;
+                    }
 
+                }
                 // try a regular wild land encounter
                 if (TryGenerateWildMon(gWildMonHeaders[headerId].landMonsInfo, WILD_AREA_LAND, WILD_CHECK_REPEL | WILD_CHECK_KEEN_EYE) == TRUE)
                 {
