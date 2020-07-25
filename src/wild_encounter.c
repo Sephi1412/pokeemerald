@@ -455,7 +455,8 @@ static bool8 TryGenerateWildMon_Dynamic(const struct WildPokemonInfo *wildMonInf
         wildMonIndex = ChooseWildMonIndex_WaterRock();
         break;
 
-    level = ChooseWildMonLevel(&wildMonInfo->wildPokemon[wildMonIndex]) + addToLevel;
+    level = ChooseWildMonLevel(&wildMonInfo->wildPokemon[wildMonIndex]);
+    
 
     case WILD_AREA_LAND:
         if (TryGetAbilityInfluencedWildMonIndex(wildMonInfo->wildPokemon, TYPE_STEEL, ABILITY_MAGNET_PULL, &wildMonIndex))
@@ -464,7 +465,7 @@ static bool8 TryGenerateWildMon_Dynamic(const struct WildPokemonInfo *wildMonInf
             break;
 
         wildMonIndex = ChooseWildMonIndex_Land();
-        level = ChooseWildMonLevel(&wildMonInfo->wildPokemon[wildMonIndex]);
+        level = addToLevel;
         break;
     
     }
@@ -476,6 +477,7 @@ static bool8 TryGenerateWildMon_Dynamic(const struct WildPokemonInfo *wildMonInf
         return FALSE;
 
     CreateWildMon(wildMonInfo->wildPokemon[wildMonIndex].species, level);
+    return TRUE;
 }
     
 
@@ -639,24 +641,31 @@ bool8 StandardWildEncounter(u16 currMetaTileBehavior, u16 previousMetaTileBehavi
                     BattleSetup_StartWildBattle();
                     return TRUE;
                 }
-                if( MetatileBehavior_IsPokeGrass_Dynamic(currMetaTileBehavior) )
+                if( MetatileBehavior_IsPokeGrass_Dynamic(currMetaTileBehavior) == TRUE)
                 {
-                    addToLevel = 20;
+                    addToLevel = 69;
                     if (TryGenerateWildMon_Dynamic(gWildMonHeaders[headerId].landMonsInfo, WILD_AREA_LAND, WILD_CHECK_REPEL | WILD_CHECK_KEEN_EYE, addToLevel) == TRUE)
                     {
                         BattleSetup_StartWildBattle();
                         return TRUE;
                     }
+                    return FALSE;
 
                 }
                 // try a regular wild land encounter
-                if (TryGenerateWildMon(gWildMonHeaders[headerId].landMonsInfo, WILD_AREA_LAND, WILD_CHECK_REPEL | WILD_CHECK_KEEN_EYE) == TRUE)
+                
+                else
                 {
-                    BattleSetup_StartWildBattle();
-                    return TRUE;
+                    if (TryGenerateWildMon(gWildMonHeaders[headerId].landMonsInfo, WILD_AREA_LAND, WILD_CHECK_REPEL | WILD_CHECK_KEEN_EYE) == TRUE)
+                    {
+                        BattleSetup_StartWildBattle();
+                        return TRUE;
+                    }
+
+                    return FALSE;
                 }
 
-                return FALSE;
+                
             }
         }
         else if (MetatileBehavior_IsWaterWildEncounter(currMetaTileBehavior) == TRUE
