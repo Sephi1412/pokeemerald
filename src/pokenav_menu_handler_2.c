@@ -155,7 +155,13 @@ static const struct SpritePalette gUnknown_086201D4[] =
     {}
 };
 
-static const u16 gUnknown_0862020C[] = {0, 0};
+/*
+    El primer parametro representa que texto va a tener
+    el rectangulo. El segundo representa el color
+    que tendrá el cuadrado pequeño dento de la textbox
+*/
+
+static const u16 gUnknown_0862020C[] = {0, 3};
 static const u16 gUnknown_08620210[] = {0x20, 1};
 static const u16 gUnknown_08620214[] = {0x40, 4};
 static const u16 gUnknown_08620218[] = {0x60, 2};
@@ -193,7 +199,7 @@ static const struct UnkStruct_08620240 gUnknown_08620240[POKENAV_MENU_TYPE_COUNT
     },
     [POKENAV_MENU_TYPE_UNLOCK_MC_RIBBONS] = 
     {
-        0x2A,
+        0x1A,
         0x14,
         {gUnknown_0862020C, gUnknown_08620210, gUnknown_08620214, gUnknown_08620218, gUnknown_0862021C}
     },

@@ -335,6 +335,7 @@ SECTIONS {
         src/starter_select_screen.o(.text);
         src/debug.o(.text);
         src/music_selector.o(.text);
+        src/new_pokenav.o(.text);
 
     } =0
 
@@ -697,6 +698,7 @@ SECTIONS {
         src/starter_select_screen.o(.rodata);
         src/debug.o(.rodata);
         src/music_selector.o(.rodata);
+        src/new_pokenav.o(.rodata);
     } =0
 
     song_data :
