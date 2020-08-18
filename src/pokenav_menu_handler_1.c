@@ -218,6 +218,8 @@ static u32 HandleMainMenuInput(struct Pokenav1Struct *state)
 
     if (gMain.newKeys & A_BUTTON)
     {
+        HideBg(0);
+        //HideBg(3);
         switch (sMenuItems[state->menuType][state->cursorPos])
         {
         case POKENAV_MENUITEM_MAP:

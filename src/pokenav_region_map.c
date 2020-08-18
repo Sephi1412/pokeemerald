@@ -19,6 +19,9 @@
 
 #define NUM_CITY_MAPS 22
 
+static const u16 gNewPokenavBgBack_Pal[] = INCBIN_U16("graphics/new_pokenav/bg3_tileset.gbapal");
+
+
 struct Pokenav5Struct
 {
     u8 filler0[0xC];
@@ -459,6 +462,8 @@ static u32 LoopedTask_ExitRegionMap(s32 taskState)
         return LT_INC_AND_PAUSE;
     case 1:
         if (IsPaletteFadeActive())
+            
+            
             return LT_PAUSE;
 
         sub_81C7FDC();
@@ -471,6 +476,7 @@ static u32 LoopedTask_ExitRegionMap(s32 taskState)
         HideBg(1);
         HideBg(2);
         HideBg(3);
+        ShowBg(0); // Ojo
         return LT_INC_AND_PAUSE;
     }
 

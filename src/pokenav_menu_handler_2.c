@@ -84,11 +84,20 @@ static void sub_81CAA3C(void);
 static const u16 gUnknown_0861FC78[] = INCBIN_U16("graphics/pokenav/bg.gbapal");
 static const u32 gUnknown_0861FC98[] = INCBIN_U32("graphics/pokenav/bg.4bpp.lz");
 static const u32 gUnknown_0861FCAC[] = INCBIN_U32("graphics/pokenav/bg.bin.lz");
+
+
 static const u16 gUnknown_0861FD4C[] = INCBIN_U16("graphics/pokenav/outline.gbapal");
 static const u32 gUnknown_0861FD6C[] = INCBIN_U32("graphics/pokenav/outline.4bpp.lz");
 static const u32 gUnknown_0861FFF4[] = INCBIN_U32("graphics/pokenav/outline_map.bin.lz");
 static const u16 gUnknown_08620104[] = INCBIN_U16("graphics/pokenav/blue_light.gbapal");
 static const u32 gUnknown_08620124[] = INCBIN_U32("graphics/pokenav/blue_light.4bpp.lz");
+
+static const u16 gNewPokenavBg_Pal[] = INCBIN_U16("graphics/new_pokenav/bg3_tileset.gbapal");
+static const u32 gNewPokenavBg_Gfx[] = INCBIN_U32("graphics/new_pokenav/bg3_tileset.4bpp.lz");
+static const u32 gNewPokenavBg_Tilemap[] = INCBIN_U32("graphics/new_pokenav/bg3_map.bin.lz");
+
+
+
 
 static const struct BgTemplate gUnknown_08620194[] = {
     {
@@ -185,9 +194,19 @@ struct UnkStruct_08620240
 // TODO
 static const struct UnkStruct_08620240 gUnknown_08620240[POKENAV_MENU_TYPE_COUNT] =
 {
+    /*
+        Cada item del array corresponde a una versión distinita del pokenav, que va cambiando
+        a medida que desbloqueas nuevas opciones como el match call o los ribbons. El primer
+        parametro corresponde a la altura de la primera opción del menú. El resto de opciones
+        son calculadas via iteraciones al sumar una cantidad constante a dicho parametro de 
+        altura. El segundo parametro corresponde a la distancia entre cada item, y el ultimo
+        corresponde al texto mismo que tendrá cada una de las opciones (Hoenn Map, Conditions,
+        etc)
+
+    */
     [POKENAV_MENU_TYPE_DEFAULT] = 
     {
-        0x2A,
+        0x2A, 
         0x14,
         {gUnknown_0862020C, gUnknown_08620210, gUnknown_0862021C}
     },
@@ -438,9 +457,9 @@ static u32 LoopedTask_OpenMenu(s32 state)
     case 2:
         if (FreeTempTileDataBuffersIfPossible())
             return LT_PAUSE;
-        DecompressAndCopyTileDataToVram(3, gUnknown_0861FC98, 0, 0, 0);
-        DecompressAndCopyTileDataToVram(3, gUnknown_0861FCAC, 0, 0, 1);
-        CopyPaletteIntoBufferUnfaded(gUnknown_0861FC78, 0x30, 0x20);
+        DecompressAndCopyTileDataToVram(3, gNewPokenavBg_Gfx, 0, 0, 0);
+        DecompressAndCopyTileDataToVram(3, gNewPokenavBg_Tilemap, 0, 0, 1);
+        CopyPaletteIntoBufferUnfaded(gNewPokenavBg_Pal, 0x0, 0x20);
         if (GetPokenavMenuType() == POKENAV_MENU_TYPE_CONDITION || GetPokenavMenuType() == POKENAV_MENU_TYPE_CONDITION_SEARCH)
             sub_81CA850();
         return LT_INC_AND_PAUSE;
@@ -849,6 +868,9 @@ static void sub_81CA0EC(const u16 *const *a0, s32 a1, s32 a2)
 
 static void sub_81CA20C(void)
 {
+    /*
+        Regula las posiciones iniciales de cada uno de los textbox
+    */
     s32 i;
     struct Pokenav2Struct * unk = GetSubstructPtr(2);
     s32 r8 = GetPokenavCursorPos();
@@ -861,11 +883,11 @@ static void sub_81CA20C(void)
         {
             if (r7++ == r8)
             {
-                r2 = 0x82;
+                r2 = 0x82; //INIT POS, PRIMERA OPCIÓN
                 unk->cursorPos = i;
             }
             else
-                r2 = 0x8c;
+                r2 = 0x8c; //INIT POS, EL RESTO
             sub_81CA35C(unk->iconSprites[i], 0x100, r2, 0xC);
             sub_81CA448(unk->iconSprites[i], FALSE);
         }
@@ -876,6 +898,10 @@ static void sub_81CA20C(void)
 
 static void sub_81CA278(void)
 {
+    /*
+        Regula las posiciones posteriores al primer input de cada uno
+        de los textbox
+    */
     s32 i;
     struct Pokenav2Struct * unk = GetSubstructPtr(2);
     s32 r3 = GetPokenavCursorPos();
@@ -894,7 +920,7 @@ static void sub_81CA278(void)
         }
     }
 
-    sub_81CA35C(unk->iconSprites[unk->cursorPos], 0x82, 0x8c, 0x4);
+    sub_81CA35C(unk->iconSprites[unk->cursorPos], 0x82, 0x8c, 0x4); //  2do parametro: Pos en X, 3er parametro: Lentitud de movimiento
     sub_81CA35C(unk->iconSprites[r5], 0x8c, 0x82, 0x4);
     unk->cursorPos = r5;
 }
@@ -1268,11 +1294,11 @@ static void sub_81CA9EC(u8 taskId)
     }
 }
 
-static void sub_81CAA3C(void)
+static void sub_81CAA3C(void) // Parpadeo de las textbox del menú
 {
     int menuType = GetPokenavMenuType();
     int cursorPos = GetPokenavCursorPos();
-    int r4 = gUnknown_08620240[menuType].unk2 * cursorPos + gUnknown_08620240[menuType].unk0 - 8;
+    int r4 = gUnknown_08620240[menuType].unk2 * cursorPos + gUnknown_08620240[menuType].unk0 - 8; //34, 54, 74, 94, 114
     CpuFill16(0, gScanlineEffectRegBuffers[0], 0x140);
     CpuFill16(0, gScanlineEffectRegBuffers[1], 0x140);
     CpuFill16(RGB(16, 23, 28), &gScanlineEffectRegBuffers[0][r4], 0x20);

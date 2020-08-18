@@ -1641,7 +1641,7 @@ void CB2_OpenPokedex(void)
         SetVBlankCallback(VBlankCB_Pokedex);
         SetMainCallback2(CB2_Pokedex);
         CreatePokedexList(sPokedexView->dexMode, sPokedexView->dexOrder);
-        m4aMPlayVolumeControl(&gMPlayInfo_BGM, 0xFFFF, 0x80);
+        m4aMPlayVolumeControl(&gMPlayInfo_BGM, 0xFFFF, 0x80); // Volume
         break;
     }
 }

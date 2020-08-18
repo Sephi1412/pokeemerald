@@ -147,6 +147,7 @@
 	.include "src/faraway_island.o"
 	.include "src/trainer_hill.o"
 	.include "src/rayquaza_scene.o"
+	.include "src/new_pokenav.o"
 
 gSoundInfo:
     .space 0xFB0

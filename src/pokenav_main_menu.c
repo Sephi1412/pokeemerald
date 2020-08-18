@@ -57,6 +57,14 @@ const u16 gSpinningPokenavPaletteData[] = INCBIN_U16("graphics/pokenav/icon2.gba
 const u32 gSpinningPokenavGfx[] = INCBIN_U32("graphics/pokenav/icon2.4bpp.lz");
 const u32 gUnused_SpinningPokenavGfx2[] = INCBIN_U32("graphics/pokenav/icon2_unused.4bpp.lz");
 
+const u16 gNewPokenavHeader_Pal[] = INCBIN_U16("graphics/pokenav/new_pokenav/bg2_tileset.gbapal");
+const u32 gNewPokenavHeader_Gfx[] = INCBIN_U32("graphics/pokenav/new_pokenav/bg2_tileset.4bpp.lz");
+const u32 gNewPokenavHeader_Tilemap[] = INCBIN_U32("graphics/pokenav/new_pokenav/bg2_map.bin.lz");
+
+const u16 gNewPokenavPokeball_Pal[] = INCBIN_U16("graphics/pokenav/new_pokenav/pokeball.gbapal");
+const u32 gNewPokenavPokeball_Gfx[] = INCBIN_U32("graphics/pokenav/new_pokenav/pokeball.4bpp.lz");
+const u32 gNewPokenavPokeball_Tilemap[] = INCBIN_U32("graphics/pokenav/new_pokenav/pokeball_map.bin.lz");
+
 const struct BgTemplate gPokenavMainMenuBgTemplates[] =
 {
     {
@@ -68,6 +76,28 @@ const struct BgTemplate gPokenavMainMenuBgTemplates[] =
         .priority = 0,
         .baseTile = 0,
     }
+};
+
+const struct BgTemplate gPokenavPreInitTemplate[] =
+{
+    {
+        .bg = 0,
+        .charBaseIndex = 0,
+        .mapBaseIndex = 5,
+        .screenSize = 0,
+        .paletteMode = 0,
+        .priority = 0,
+        .baseTile = 0,
+    },
+    {
+		.bg = 1,
+		.charBaseIndex = 1,
+		.mapBaseIndex = 10,
+		.screenSize = 0,
+		.paletteMode = 0,
+		.priority = 1,
+		.baseTile = 1,
+	},
 };
 
 static const struct WindowTemplate sHelpBarWindowTemplate[] =
@@ -330,6 +360,22 @@ bool32 WaitForPokenavShutdownFade(void)
     return TRUE;
 }
 
+
+static u32 LoopedTask_PreInitPokenavMenu(s32 a0)
+{
+    struct PokenavMainMenuResources *structPtr;
+    SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_OBJ_ON | DISPCNT_OBJ_1D_MAP);
+    FreeAllWindowBuffers();
+    ResetBgsAndClearDma3BusyFlags(0);
+    InitBgsFromTemplates(0, gPokenavPreInitTemplate, ARRAY_COUNT(gPokenavPreInitTemplate));
+    ResetBgPositions();
+    ResetTempTileDataBuffers();
+    //return LT_INC_AND_CONTINUE;
+    //structPtr->currentTaskId = CreateLoopedTask(LoopedTask_InitPokenavMenu, 1);
+
+}
+
+
 static u32 LoopedTask_InitPokenavMenu(s32 a0)
 {
     struct PokenavMainMenuResources *structPtr;
@@ -346,10 +392,10 @@ static u32 LoopedTask_InitPokenavMenu(s32 a0)
         return LT_INC_AND_CONTINUE;
     case 1:
         structPtr = GetSubstructPtr(0);
-        DecompressAndCopyTileDataToVram(0, &gPokenavHeader_Gfx, 0, 0, 0);
+        DecompressAndCopyTileDataToVram(0, &gNewPokenavHeader_Gfx, 0, 0, 0);
         SetBgTilemapBuffer(0, structPtr->tilemapBuffer);
-        CopyToBgTilemapBuffer(0, &gPokenavHeader_Tilemap, 0, 0);
-        CopyPaletteIntoBufferUnfaded(gPokenavHeader_Pal, 0, 0x20);
+        CopyToBgTilemapBuffer(0, &gNewPokenavHeader_Tilemap, 0, 0);
+        CopyPaletteIntoBufferUnfaded(gNewPokenavHeader_Pal, 0xB0, 0x20);
         CopyBgTilemapBufferToVram(0);
         return LT_INC_AND_PAUSE;
     case 2:
@@ -364,7 +410,7 @@ static u32 LoopedTask_InitPokenavMenu(s32 a0)
 
         InitPokenavMainMenuResources();
         InitHoennMapHeaderSprites();
-        ShowBg(0);
+        ShowBg(0); //Ojo
         return LT_FINISH;
     default:
         return LT_FINISH;
@@ -420,7 +466,11 @@ static u32 LoopedTask_ScrollMenuHeaderDown(s32 a0)
         return LT_INC_AND_PAUSE;
     case 0:
         return LT_INC_AND_PAUSE;
-    case 2:
+    case 2:                 
+        /*
+            Esto se encarga de mover el BG hacia arriba o hacia
+            abajo.
+        */
         if (ChangeBgY(0, 384, 1) >= 0x2000u)
         {
             ChangeBgY(0, 0x2000, 0);
@@ -687,8 +737,8 @@ static void InitPokenavMainMenuResources(void)
 
     Pokenav_AllocAndLoadPalettes(gSpinningNavgearPalettes);
     structPtr->palettes = ~1 & ~(0x10000 << IndexOfSpritePaletteTag(0));
-    spriteId = CreateSprite(&sSpinningPokenavSpriteTemplate, 220, 12, 0);
-    structPtr->spinningPokenav = &gSprites[spriteId];
+    //spriteId = CreateSprite(&sSpinningPokenavSpriteTemplate, 220, 12, 0);
+    //structPtr->spinningPokenav = &gSprites[spriteId];
 }
 
 static void CleanupPokenavMainMenuResources(void)

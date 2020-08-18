@@ -361,6 +361,7 @@ u32 sub_81CE2D0(s32 state)
         if (IsPaletteFadeActive() || MainMenuLoopedTaskIsBusy())
             return 2;
         sub_81D354C(structPtr->unk28e0);
+        HideBg(0);
         HideBg(1);
         HideBg(2);
         HideBg(3);

@@ -5,6 +5,7 @@
 #include "palette.h"
 #include "bg.h"
 #include "graphics.h"
+#include "gpu_regs.h"
 
 // const rom data
 const u8 gTextWindowFrame1_Gfx[] = INCBIN_U8("graphics/text_window/1.4bpp");
@@ -194,4 +195,5 @@ void sub_8098C6C(u8 bg, u16 destOffset, u8 palOffset)
 {
     LoadBgTiles(bg, sWindowFrames[gSaveBlock2Ptr->optionsWindowFrameType].tiles, 0x120, destOffset);
     LoadPalette(GetWindowFrameTilesPal(gSaveBlock2Ptr->optionsWindowFrameType)->pal, palOffset, 0x20);
+    
 }
