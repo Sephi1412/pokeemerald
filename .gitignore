@@ -31,5 +31,6 @@ build/
 .idea/
 porymap.project.cfg
 .vscode/
+no_gba/
 *.a
 .fuse_hidden*
