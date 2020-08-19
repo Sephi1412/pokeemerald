@@ -47,12 +47,83 @@ struct NewPokenav
 {
     //struct PokedexListItem pokedexList[NATIONAL_DEX_COUNT + 1];
     u16 iconSpriteIds[MAX_ICONS_ON_SCREEN];
-    bool8 moveSprite;
+    bool8 cursorIsMoving;
     u8 rowIndex;
     u8 columnIndex;
 
     u8 cursorId;
+    u8 taskId;
+    bool8 columnIsMoving;
+    u8 spriteId0, spriteId1, spriteId2, spriteId3,
+    spriteId4, spriteId5, spriteId6, spriteId7, spriteId8;
 };
+
+struct NewPokenavIcon
+{
+    u8 rowIndex;
+    u8 columnIndex;
+    u8 appName[16];
+
+};
+
+const struct NewPokenavIcon NewPokenavIcons[3][3] =
+{
+    [0][0] =
+    {
+        .rowIndex = 0,
+        .columnIndex = 0,
+        .appName = _("Music Selector"),
+    },
+    [0][1] =
+    {
+        .rowIndex = 0,
+        .columnIndex = 1,
+        .appName = _("Peli-Taxi"),
+    },
+    [0][2] =
+    {
+        .rowIndex = 0,
+        .columnIndex = 2,
+        .appName = _("Remote Mart"),
+    },
+    [1][0] =
+    {
+        .rowIndex = 1,
+        .columnIndex = 0,
+        .appName = _("Music Selector"),
+    },
+    [1][1] =
+    {
+        .rowIndex = 1,
+        .columnIndex = 1,
+        .appName = _("Peli-Taxi"),
+    },
+    [1][2] =
+    {
+        .rowIndex = 1,
+        .columnIndex = 2,
+        .appName = _("Remote Mart"),
+    },
+    [2][0] =
+    {
+        .rowIndex = 2,
+        .columnIndex = 0,
+        .appName = _("Music Selector"),
+    },
+    [2][1] =
+    {
+        .rowIndex = 2,
+        .columnIndex = 1,
+        .appName = _("Peli-Taxi"),
+    },
+    [2][2] =
+    {
+        .rowIndex = 2,
+        .columnIndex = 2,
+        .appName = _("Remote Mart"),
+    },
+};
+
 
 /* BACKGROUNDS */
 
@@ -67,6 +138,9 @@ static const u16 sBg2Pal[] = INCBIN_U16("graphics/new_pokenav/bg2_tileset.gbapal
 
 static const u32 sBg1_Tiles[] = INCBIN_U32("graphics/new_pokenav/bg1_tileset.4bpp.lz");
 static const u32 sBg1_Map[] = INCBIN_U32("graphics/new_pokenav/bg1_map.bin.lz");
+
+static const u32 sBg1_Pokeball_Tiles[] = INCBIN_U32("graphics/new_pokenav/pokeball_tileset.4bpp.lz");
+static const u32 sBg1_Pokeball_Map[] = INCBIN_U32("graphics/new_pokenav/pokeball_tileset.bin.lz");
 
 static const u16 sBgColor[] = {RGB_WHITE};
 
@@ -90,15 +164,27 @@ static void MainCallBack2(void);
 static void VBlankCallBack(void);
 void StartNewPokenav_CB2(void);
 void Callback2_StartNewPokenav(void);
-static void Task_PokeNavFadeIn(u8 taskId);
-static void Task_IdleState(u8 taskId);
 static void UpdatePaletteTest(u8 frameNum);
-static void SpriteCB_moveSprite(struct Sprite *sprite);
-static void SpriteCB_resizeSprite(struct Sprite *sprite);
 static void SetAffineData(struct Sprite *sprite, s16 xScale, s16 yScale, u16 rotation);
 static void ConstructOamMatrix(u8 spriteId, s16 sX, s16 sY, s16 rotation);
+
+static void Task_PokeNavFadeIn(u8 taskId);
+static void Task_LoadBorderBg(u8 taskId);
+static void Task_FadePokeball(u8 taskId);
+static void Task_WaitingForInput(u8 taskId);
+static void Task_IdleState(u8 taskId);
+static void Task_LoadIconsAndCursor(u8 taskId);
 static void Task_GoBackToOverworld(u8 taskId);
 static void Task_StartFadeOut(u8 taskId);
+static void Task_SpawnIconColumns(u8 taskId);
+static void Task_SpawnIconColumns_V2(u8 taskId);
+
+static void SpawnIcons();
+
+static void SpriteCB_moveCursor(struct Sprite *sprite);
+static void SpriteCB_resizeSprite(struct Sprite *sprite);
+static void SpriteCB_moveIcon(struct Sprite *sprite);
+
 
 static const struct BgTemplate sBgTemplates[] =
 {
@@ -154,7 +240,7 @@ static const struct OamData spriteIconOamData =
     .matrixNum = 0,
     .size = 2, //Esto indica el tamaño de nuestro sprite, más abajo está la tabla
     .tileNum = 0,
-    .priority = 1, //Esto es la prioridad, a menor número, mayor prioridad, por tanto, para tener la máxima prioridad
+    .priority = 3, //Esto es la prioridad, a menor número, mayor prioridad, por tanto, para tener la máxima prioridad
     .paletteNum = 0,
     .affineParam = 0,
 };
@@ -235,7 +321,7 @@ const struct SpriteTemplate spriteTemplateCursor =
 	.anims = sAnims_CursortableAnim,
 	.images = NULL, 
 	.affineAnims = gDummySpriteAffineAnimTable, 
-	.callback = SpriteCB_moveSprite, //ESTOD
+	.callback = SpriteCB_moveCursor, //ESTO
 };
 
 
@@ -251,8 +337,11 @@ static void InitAndShowBgsFromTemplate()
 	LZ77UnCompVram(sBg3_Map, (u16*) BG_SCREEN_ADDR(26));
 	LZ77UnCompVram(sBg2_Tiles, (void *) VRAM + 0x4000 * 2);
 	LZ77UnCompVram(sBg2_Map, (u16*) BG_SCREEN_ADDR(18));
-    LZ77UnCompVram(sBg1_Tiles, (void *) VRAM + 0x4000 * 1);
-	LZ77UnCompVram(sBg1_Map, (u16*) BG_SCREEN_ADDR(10));
+    //LZ77UnCompVram(sBg1_Tiles, (void *) VRAM + 0x4000 * 1);
+	//LZ77UnCompVram(sBg1_Map, (u16*) BG_SCREEN_ADDR(10));
+
+    LZ77UnCompVram(sBg1_Pokeball_Tiles, (void *) VRAM + 0x4000 * 1);
+	LZ77UnCompVram(sBg1_Pokeball_Map, (u16*) BG_SCREEN_ADDR(10));
 
 	LoadPalette(sBg3Pal, 0x00, 0x20);
 	LoadPalette(sBg2Pal, 0x10, 0x20);
@@ -260,8 +349,6 @@ static void InitAndShowBgsFromTemplate()
 	ResetAllBgsCoordinates();
 
 	//ShowBg(0);
-    SetGpuReg(REG_OFFSET_BLDCNT, BLDCNT_TGT1_BG1 | BLDCNT_EFFECT_BLEND | BLDCNT_TGT2_ALL);
-    SetGpuReg(REG_OFFSET_BLDALPHA, BLDALPHA_BLEND(5, 16));
 	ShowBg(1);
 	ShowBg(2);
 	ShowBg(3);
@@ -297,6 +384,16 @@ static void printIcons()
     spriteId6 = CreateSprite(&spriteTemplateIcon, 50, 110, 0);
     spriteId7 = CreateSprite(&spriteTemplateIcon, 120, 110, 0);
     spriteId8 = CreateSprite(&spriteTemplateIcon, 190, 110, 0);
+
+    sNewPokenavView->spriteId0 = spriteId0;
+    sNewPokenavView->spriteId1 = spriteId1;
+    sNewPokenavView->spriteId2 = spriteId2;
+    sNewPokenavView->spriteId3 = spriteId3;
+    sNewPokenavView->spriteId4 = spriteId4;
+    sNewPokenavView->spriteId5 = spriteId5;
+    sNewPokenavView->spriteId6 = spriteId6;
+    sNewPokenavView->spriteId7 = spriteId7;
+    sNewPokenavView->spriteId8 = spriteId8;
 }
 
 static void printCursor()
@@ -375,25 +472,21 @@ void Callback2_StartNewPokenav(void)
 
         gTasks[taskId].data[0] = 0;
         sNewPokenavView = AllocZeroed(sizeof(struct NewPokenav));
-        sNewPokenavView->moveSprite = FALSE;
+        sNewPokenavView->cursorIsMoving = FALSE;
         sNewPokenavView->rowIndex = 1;
         sNewPokenavView->columnIndex = 1;
+        sNewPokenavView->columnIsMoving = FALSE;
         gMain.state++;
         break;
     case 4:
-        PlaySE(SE_PN_ON);
         InitAndShowBgsFromTemplate();
-        
-        printIcons();
-        printCursor();
-        
         LoadPalette(sBgColor, 0, 2);
         LoadPalette(GetOverworldTextboxPalettePtr(), 0xf0, 16);
         gMain.state++;
         break;
     case 5:
         
-        taskId = CreateTask(Task_IdleState, 0);
+        taskId = CreateTask(Task_WaitingForInput, 0);
         //data = AllocZeroed(sizeof(struct MusicMenu));
         //SetStructPtr(taskId, data);
         gMain.state++;
@@ -406,6 +499,12 @@ void Callback2_StartNewPokenav(void)
     }
 }
 
+static void Task_LoadIconsAndCursor(u8 taskId)
+{
+    //printIcons();
+    printCursor();
+    gTasks[taskId].func = Task_IdleState;
+}
 
 static void Task_PokeNavFadeIn(u8 taskId)
 {
@@ -413,12 +512,175 @@ static void Task_PokeNavFadeIn(u8 taskId)
         return;
 }
 
+static void Task_WaitingForInput(u8 taskId)
+{
+
+    if (gMain.newKeys & A_BUTTON)
+    {
+        /*
+            Aqui debemos hacer un degrade sobre el BG1 hasta
+            que deje de ser visible, borrar el BG1 y cargar
+            el nuevo BG1, lugar en donde se printearan los
+            diferentes strings.
+        */
+        PlaySE(SE_PN_ON);
+        gTasks[taskId].data[1] = 6;
+        gTasks[taskId].func = Task_FadePokeball;
+
+    }
+
+    if (gMain.newKeys & B_BUTTON)
+    {
+        gTasks[taskId].func = Task_StartFadeOut;
+    }
+    
+    else
+    {
+        gTasks[taskId].data[0]++;
+        UpdatePaletteTest(gTasks[taskId].data[0]);
+    }
+    
+}
+
+
+static void Task_FadePokeball(u8 taskId)
+{
+    if(gTasks[taskId].data[1] > 0)
+    {
+        SetGpuReg(REG_OFFSET_BLDCNT, BLDCNT_TGT1_BG1 | BLDCNT_EFFECT_BLEND | BLDCNT_TGT2_ALL);
+        SetGpuReg(REG_OFFSET_BLDALPHA, BLDALPHA_BLEND(gTasks[taskId].data[1], 16));
+        gTasks[taskId].data[1] -= 1;
+    }
+    else
+    {
+        LZ77UnCompVram(sBg1_Tiles, (void *) VRAM + 0x4000 * 1);
+	    LZ77UnCompVram(sBg1_Map, (u16*) BG_SCREEN_ADDR(10));
+        gTasks[taskId].func = Task_LoadBorderBg;
+    }
+    
+}
+
+static void Task_LoadBorderBg(u8 taskId)
+{
+    if(gTasks[taskId].data[1] <= 6)
+    {
+        gTasks[taskId].data[1] += 1;
+        SetGpuReg(REG_OFFSET_BLDCNT, BLDCNT_TGT1_BG1 | BLDCNT_EFFECT_BLEND | BLDCNT_TGT2_ALL);
+        SetGpuReg(REG_OFFSET_BLDALPHA, BLDALPHA_BLEND(gTasks[taskId].data[1], 16));
+    }
+    else
+    {
+        sNewPokenavView->taskId = taskId;
+        gTasks[taskId].data[0] = 0;
+        gTasks[taskId].data[1] = 0;
+        gTasks[taskId].func = Task_SpawnIconColumns_V2;
+        
+    }
+}
+
+
+static void Task_WaitColumnToSpawn(u8 taskId)
+{
+    if(sNewPokenavView->columnIsMoving)
+    {
+        gTasks[taskId].func = Task_WaitColumnToSpawn;
+    }
+    else
+    {
+        gTasks[sNewPokenavView->taskId].data[0] -= 1;
+        gTasks[sNewPokenavView->taskId].data[1] += 1;
+        gTasks[taskId].func = Task_SpawnIconColumns;
+    }
+    
+}
+
+static void Task_MoveIcons(u8 taskId)
+{
+    if(gSprites[sNewPokenavView->spriteId0].pos2.x >= -190)
+    {
+        gSprites[sNewPokenavView->spriteId0].pos2.x -=10;
+        gSprites[sNewPokenavView->spriteId1].pos2.x -=10;
+        gSprites[sNewPokenavView->spriteId2].pos2.x -=10;
+    }
+
+    if(gSprites[sNewPokenavView->spriteId3].pos2.x >= -120)
+    {
+        gSprites[sNewPokenavView->spriteId3].pos2.x -=10;
+        gSprites[sNewPokenavView->spriteId4].pos2.x -=10;
+        gSprites[sNewPokenavView->spriteId5].pos2.x -=10;
+    }
+
+    if(gSprites[sNewPokenavView->spriteId6].pos2.x >= -50)
+    {
+        gSprites[sNewPokenavView->spriteId6].pos2.x -=10;
+        gSprites[sNewPokenavView->spriteId7].pos2.x -=10;
+        gSprites[sNewPokenavView->spriteId8].pos2.x -=10;
+    }
+
+    if(gSprites[sNewPokenavView->spriteId0].pos2.x < -190)
+        gTasks[taskId].func = Task_LoadIconsAndCursor;
+
+
+    
+    
+}
+
+
+static void Task_SpawnIconColumns(u8 taskId)
+{
+    sNewPokenavView->taskId = taskId;
+    sNewPokenavView->columnIsMoving = TRUE;
+    SpawnIcons();
+    gTasks[sNewPokenavView->taskId].data[0] += 1;
+    gTasks[taskId].func = Task_PokeNavFadeIn;
+    
+}
+
+static void Task_SpawnIconColumns_V2(u8 taskId)
+{
+    sNewPokenavView->taskId = taskId;
+    sNewPokenavView->columnIsMoving = TRUE;
+    SpawnIcons();
+    gTasks[taskId].func = Task_MoveIcons;
+}
+
+
+
+static void SpawnIcons()
+{
+    u8 spriteId0, spriteId1, spriteId2, spriteId3,
+    spriteId4, spriteId5, spriteId6, spriteId7, spriteId8;
+
+    LoadSpriteSheet(&spriteSheetIcon);
+	LoadSpritePalette(&spritePaletteIcon);
+
+    spriteId0 = CreateSprite(&spriteTemplateIcon, 255, 50, 0);
+    spriteId1 = CreateSprite(&spriteTemplateIcon, 255, 80, 0);
+    spriteId2 = CreateSprite(&spriteTemplateIcon, 255, 110, 0);
+    spriteId3 = CreateSprite(&spriteTemplateIcon, 255, 50, 0);
+    spriteId4 = CreateSprite(&spriteTemplateIcon, 255, 80, 0);
+    spriteId5 = CreateSprite(&spriteTemplateIcon, 255, 110, 0);
+    spriteId6 = CreateSprite(&spriteTemplateIcon, 255, 50, 0);
+    spriteId7 = CreateSprite(&spriteTemplateIcon, 255, 80, 0);
+    spriteId8 = CreateSprite(&spriteTemplateIcon, 255, 110, 0); 
+
+    sNewPokenavView->spriteId0 = spriteId0;
+    sNewPokenavView->spriteId1 = spriteId1;
+    sNewPokenavView->spriteId2 = spriteId2;
+    sNewPokenavView->spriteId3 = spriteId3;
+    sNewPokenavView->spriteId4 = spriteId4;
+    sNewPokenavView->spriteId5 = spriteId5;
+    sNewPokenavView->spriteId6 = spriteId6;
+    sNewPokenavView->spriteId7 = spriteId7;
+    sNewPokenavView->spriteId8 = spriteId8;
+}
+
+
+
 static void Task_IdleState(u8 taskId)
 {
     u8 columnIndex;
-    gTasks[taskId].data[0]++;
     
-    //UpdatePaletteTest(gTasks[taskId].data[0]);
     
     if (gMain.newKeys & B_BUTTON)
     {
@@ -428,22 +690,22 @@ static void Task_IdleState(u8 taskId)
     if (gMain.newKeys & DPAD_LEFT)
     {
         sNewPokenavView->columnIndex = DecreaseIndex(sNewPokenavView->columnIndex);
-        sNewPokenavView->moveSprite = TRUE;
+        sNewPokenavView->cursorIsMoving = TRUE;
     }
     if (gMain.newKeys & DPAD_RIGHT)
     {
         sNewPokenavView->columnIndex = IncreaseIndex(sNewPokenavView->columnIndex);
-        sNewPokenavView->moveSprite = TRUE;
+        sNewPokenavView->cursorIsMoving = TRUE;
     }
     if (gMain.newKeys & DPAD_UP)
     {
         sNewPokenavView->rowIndex = DecreaseIndex(sNewPokenavView->rowIndex);
-        sNewPokenavView->moveSprite = TRUE;
+        sNewPokenavView->cursorIsMoving = TRUE;
     }
     if (gMain.newKeys & DPAD_DOWN)
     {
         sNewPokenavView->rowIndex = IncreaseIndex(sNewPokenavView->rowIndex);
-        sNewPokenavView->moveSprite = TRUE;
+        sNewPokenavView->cursorIsMoving = TRUE;
     }
 }
 
@@ -470,16 +732,16 @@ static void UpdatePaletteTest(u8 frameNum)
     if ((frameNum % 4) == 0) // Change color every 4th frame
     {
         s32 intensity = Cos(frameNum, 128) + 128;
-        s32 r = 31 - ((intensity * 32 - intensity) / 256);
-        s32 g = 31 - (intensity * 22 / 256);
-        s32 b = 12;
+        s32 r = 31 - ((intensity * 32 - intensity) / 269);
+        s32 g = 31 - ((intensity * 32 - intensity) / 256);
+        s32 b = 0;
 
         u16 color = RGB(r, g, b);
-        LoadPalette(&color, 0x11, sizeof(color));
+        LoadPalette(&color, 0x1F, sizeof(color));
    }
 }
 
-static void SpriteCB_moveSprite(struct Sprite *sprite)
+static void SpriteCB_moveCursor(struct Sprite *sprite)
 {
     /*
         LEFT COLUMN = 50
@@ -490,17 +752,31 @@ static void SpriteCB_moveSprite(struct Sprite *sprite)
         MID ROW = 80
         LOWER ROW = 110
     */
-    if (sNewPokenavView->moveSprite)
+    if (sNewPokenavView->cursorIsMoving)
     {
         PlaySE(SE_SELECT);
         sprite->pos2.x = 50 + (sNewPokenavView->columnIndex*70) - 120;
         sprite->pos2.y = (sNewPokenavView->rowIndex*30) - 30;
-        sNewPokenavView->moveSprite = FALSE;
+        sNewPokenavView->cursorIsMoving = FALSE;
     }
 }
 
+static void SpriteCB_moveIcon(struct Sprite *sprite)
+{
+    /*
 
+        entry point: 240
+        1st checkpoint: 50
+    */
+ 
+    if(sprite->pos2.x >= -( gTasks[sNewPokenavView->taskId].data[0] * 70 + 40 ) )
+        sprite->pos2.x -= 10;
+    else
+    {
+        sNewPokenavView->columnIndex = FALSE;
+    }
 
+}
 
 
 static void SetAffineData(struct Sprite *sprite, s16 xScale, s16 yScale, u16 rotation)
